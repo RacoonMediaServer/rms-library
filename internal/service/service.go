@@ -19,16 +19,6 @@ type LibraryService struct {
 	cli  *client.Client
 }
 
-func (l LibraryService) SearchMovie(ctx context.Context, request *rms_library.SearchMovieRequest, response *rms_library.SearchMovieResponse) error {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (l LibraryService) DownloadMovie(ctx context.Context, request *rms_library.DownloadMovieRequest, response *rms_library.DownloadMovieResponse) error {
-	//TODO implement me
-	panic("implement me")
-}
-
 func (l LibraryService) GetTvSeriesUpdates(ctx context.Context, empty *emptypb.Empty, response *rms_library.GetTvSeriesUpdatesResponse) error {
 	//TODO implement me
 	panic("implement me")
