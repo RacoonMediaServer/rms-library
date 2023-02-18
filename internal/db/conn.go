@@ -1,23 +1,40 @@
 package db
 
 import (
-	"github.com/RacoonMediaServer/rms-packages/pkg/configuration"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
+	"context"
+	"fmt"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+	"time"
 )
 
-// Database represents all database methods
-type Database interface {
+type Database struct {
+	cli *mongo.Client
+	db  *mongo.Database
+	mov *mongo.Collection
 }
 
-type database struct {
-	conn *gorm.DB
-}
+const databaseTimeout = 40 * time.Second
 
-func Connect(config configuration.Database) (Database, error) {
-	db, err := gorm.Open(postgres.Open(config.GetConnectionString()))
+// Connect creates database connection
+func Connect(uri string) (*Database, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), databaseTimeout)
+	defer cancel()
+
+	cli, err := mongo.Connect(ctx, options.Client().ApplyURI(uri))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("connect to db failed: %w", err)
 	}
-	return database{conn: db}, nil
+
+	if err = cli.Ping(ctx, nil); err != nil {
+		return nil, fmt.Errorf("connect to db failed: %w", err)
+	}
+
+	db := &Database{
+		cli: cli,
+		db:  cli.Database("library"),
+		mov: cli.Database("library").Collection("movies"),
+	}
+
+	return db, nil
 }
