@@ -2,9 +2,9 @@ package main
 
 import (
 	"fmt"
+	"github.com/RacoonMediaServer/rms-library/internal/config"
+	"github.com/RacoonMediaServer/rms-library/internal/db"
 	"github.com/RacoonMediaServer/rms-packages/pkg/service/servicemgr"
-	"github.com/RacoonMediaServer/rms-template/internal/config"
-	"github.com/RacoonMediaServer/rms-template/internal/db"
 	"github.com/urfave/cli/v2"
 	"go-micro.dev/v4"
 	"go-micro.dev/v4/logger"
@@ -12,7 +12,7 @@ import (
 
 var Version = "v0.0.0"
 
-const serviceName = "rms-template"
+const serviceName = "rms-library"
 
 func main() {
 	logger.Infof("%s %s", serviceName, Version)
