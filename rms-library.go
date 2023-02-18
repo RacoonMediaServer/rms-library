@@ -62,9 +62,10 @@ func main() {
 	if err != nil {
 		logger.Fatalf("Connect to database failed: %s", err)
 	}
+	logger.Info("Connected to database")
 
 	// создаем клиента к Remote-сервису rms-media-discovery
-	tr := httptransport.New(discoveryEndpoint, "", client.DefaultSchemes)
+	tr := httptransport.New(discoveryEndpoint, "/media", client.DefaultSchemes)
 	auth := httptransport.APIKeyAuth("X-Token", "header", cfg.Device)
 	discoveryClient := client.New(tr, strfmt.Default)
 
