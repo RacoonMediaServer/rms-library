@@ -12,7 +12,6 @@ import (
 const searchTorrentsLimit uint = 10
 
 type LibraryService struct {
-	c    *cache
 	f    servicemgr.ServiceFactory
 	auth runtime.ClientAuthInfoWriter
 	db   Database
@@ -41,7 +40,6 @@ func (l LibraryService) GetMovieLayout(ctx context.Context, request *rms_library
 
 func NewService(db Database, f servicemgr.ServiceFactory, cli *client.Client, auth runtime.ClientAuthInfoWriter) rms_library.RmsLibraryHandler {
 	return &LibraryService{
-		c:    newCache(),
 		f:    f,
 		auth: auth,
 		db:   db,

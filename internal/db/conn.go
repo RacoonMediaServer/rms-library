@@ -9,9 +9,10 @@ import (
 )
 
 type Database struct {
-	cli *mongo.Client
-	db  *mongo.Database
-	mov *mongo.Collection
+	cli   *mongo.Client
+	db    *mongo.Database
+	mov   *mongo.Collection
+	cache *mongo.Collection
 }
 
 const databaseTimeout = 40 * time.Second
@@ -30,10 +31,13 @@ func Connect(uri string) (*Database, error) {
 		return nil, fmt.Errorf("connect to db failed: %w", err)
 	}
 
+	lib := cli.Database("library")
+
 	db := &Database{
-		cli: cli,
-		db:  cli.Database("library"),
-		mov: cli.Database("library").Collection("movies"),
+		cli:   cli,
+		db:    lib,
+		mov:   lib.Collection("movies"),
+		cache: lib.Collection("cache"),
 	}
 
 	return db, nil

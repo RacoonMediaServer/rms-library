@@ -49,6 +49,7 @@ func (l LibraryService) SearchMovie(ctx context.Context, request *rms_library.Se
 		logger.Error(err)
 		return err
 	}
+	logger.Infof("Got %d results", len(resp.Payload.Results))
 
 	response.Movies = make([]*rms_library.FoundMovie, 0, len(resp.Payload.Results))
 	for _, r := range resp.Payload.Results {
@@ -58,7 +59,9 @@ func (l LibraryService) SearchMovie(ctx context.Context, request *rms_library.Se
 			SeasonsDownloaded: make([]uint32, 0),
 		}
 
-		l.c.PutMovieInfo(mov.Id, mov.Info)
+		if err = l.db.PutMovieInfo(ctx, *r.ID, mov.Info); err != nil {
+			logger.Warnf("Save movie info to cache failed: %s", err)
+		}
 
 		seasons, err := l.db.GetDownloadedSeasons(ctx, *r.ID)
 		if err != nil {

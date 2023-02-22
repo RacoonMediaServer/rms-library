@@ -15,6 +15,8 @@ import (
 	"sort"
 )
 
+var errAnyTorrentsNotFound = errors.New("any torrents not found")
+
 func (l LibraryService) searchTorrents(ctx context.Context, mov *rms_library.MovieInfo, season *uint32) ([]*models.SearchTorrentsResult, error) {
 	limit := int64(searchTorrentsLimit)
 	torrentType := "movies"
@@ -65,7 +67,7 @@ func (l LibraryService) searchAndDownloadMovie(ctx context.Context, mov *model.M
 	}
 
 	if len(list) == 0 {
-		return errors.New("any torrents not found")
+		return errAnyTorrentsNotFound
 	}
 
 	sortTorrentMovies(list)
@@ -99,8 +101,13 @@ func (l LibraryService) DownloadMovie(ctx context.Context, request *rms_library.
 
 	logger.Infof("DownloadMovie: %s", request.Id)
 	// 1. Вытаскиваем из кеша инфу о медиа
-	movInfo, ok := l.c.GetMovieInfo(request.Id)
-	if !ok {
+	movInfo, err := l.db.GetMovieInfo(ctx, request.Id)
+	if err != nil {
+		logger.Errorf("Get movie info from cache failed: %s", err)
+		return err
+	}
+
+	if movInfo == nil {
 		err := fmt.Errorf("movie '%s' not found in the cache", request.Id)
 		logger.Warn(err)
 		return err
@@ -154,6 +161,9 @@ func (l LibraryService) DownloadMovie(ctx context.Context, request *rms_library.
 		response.Seasons = downloadedSeasons
 	} else {
 		if err := l.searchAndDownloadMovie(ctx, mov, nil); err != nil {
+			if errors.Is(err, errAnyTorrentsNotFound) {
+				return nil
+			}
 			logger.Error(err)
 			return err
 		}
