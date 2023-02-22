@@ -46,7 +46,7 @@ func extractLayout(file string) dirLayout {
 func (l dirLayout) IsVideoFile() bool {
 
 	var videoExtensions = []string{
-		"mkv", "mp4", "vob", "sub", "3gp", "avi", "wmv", "flv", "ogv", "mp4v", "ts", "mpeg4", "mjpg", "mpg", "mov", "xvid",
+		"mkv", "mp4", "vob", "sub", "3gp", "avi", "wmv", "flv", "ogv", "mp4v", "ts", "mpeg4", "mjpg", "mpg", "mov", "xvid", "m4v",
 	}
 
 	ext := strings.ToLower(l.Extension)

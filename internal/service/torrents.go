@@ -93,6 +93,10 @@ func (l LibraryService) searchAndDownloadMovie(ctx context.Context, mov *model.M
 		return err
 	}
 
+	if err = l.m.CreateMovieLayout(mov); err != nil {
+		logger.Warnf("Create storage layout failed: %s", err)
+	}
+
 	return nil
 }
 

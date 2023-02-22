@@ -62,3 +62,16 @@ func (m *Movie) AddFile(torrentID string, f File, season uint) {
 	}
 	m.Seasons = append(m.Seasons, s)
 }
+
+func (m *Movie) HasSeasonVariants(no uint) bool {
+	cnt := 0
+	for _, s := range m.Seasons {
+		if s.No == no {
+			cnt++
+			if cnt >= 2 {
+				return true
+			}
+		}
+	}
+	return false
+}

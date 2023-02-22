@@ -9,6 +9,9 @@ type Configuration struct {
 
 	// Device API key
 	Device string
+
+	// Directory is a base media directory
+	Directory string
 }
 
 var config Configuration

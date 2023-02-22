@@ -5,6 +5,7 @@ import (
 	"github.com/RacoonMediaServer/rms-library/internal/config"
 	"github.com/RacoonMediaServer/rms-library/internal/db"
 	libraryService "github.com/RacoonMediaServer/rms-library/internal/service"
+	"github.com/RacoonMediaServer/rms-library/internal/storage"
 	"github.com/RacoonMediaServer/rms-media-discovery/pkg/client/client"
 	rms_library "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-library"
 	"github.com/RacoonMediaServer/rms-packages/pkg/service/servicemgr"
@@ -64,12 +65,18 @@ func main() {
 	}
 	logger.Info("Connected to database")
 
+	// создаем структуру директорий
+	dirManager := storage.Manager{BaseDirectory: cfg.Directory}
+	if err = dirManager.CreateDefaultLayout(); err != nil {
+		logger.Fatalf("Cannot create directories: %s", err)
+	}
+
 	// создаем клиента к Remote-сервису rms-media-discovery
 	tr := httptransport.New(discoveryEndpoint, "/media", client.DefaultSchemes)
 	auth := httptransport.APIKeyAuth("X-Token", "header", cfg.Device)
 	discoveryClient := client.New(tr, strfmt.Default)
 
-	lib := libraryService.NewService(database, f, discoveryClient, auth)
+	lib := libraryService.NewService(database, f, discoveryClient, auth, dirManager)
 
 	//регистрируем хендлеры
 	if err := rms_library.RegisterRmsLibraryHandler(service.Server(), lib); err != nil {
