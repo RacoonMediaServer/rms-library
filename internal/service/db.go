@@ -10,6 +10,7 @@ import (
 type Database interface {
 	GetDownloadedSeasons(ctx context.Context, id string) ([]uint, error)
 	GetOrCreateMovie(ctx context.Context, mov *model.Movie) error
+	GetMovie(ctx context.Context, id string) (*model.Movie, error)
 	UpdateMovieContent(mov *model.Movie) error
 
 	PutMovieInfo(ctx context.Context, id string, mov *rms_library.MovieInfo) error

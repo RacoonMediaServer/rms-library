@@ -28,13 +28,8 @@ func (d Database) GetDownloadedSeasons(ctx context.Context, id string) ([]uint, 
 		return []uint{}, err
 	}
 
-	m := make(map[uint]struct{}, len(mov.Seasons))
-	for i := range mov.Seasons {
-		m[mov.Seasons[i].No] = struct{}{}
-	}
-
-	out := make([]uint, 0, len(m))
-	for k, _ := range m {
+	out := make([]uint, 0, len(mov.Seasons))
+	for k, _ := range mov.Seasons {
 		out = append(out, k)
 	}
 
@@ -71,11 +66,32 @@ func (d Database) UpdateMovieContent(mov *model.Movie) error {
 	defer cancel()
 
 	filter := bson.D{{"_id", mov.ID}}
-	update := bson.D{{"$set", bson.D{{"files", mov.Files}, {"seasons", mov.Seasons}}}}
+	update := bson.D{{"$set", bson.D{{"files", mov.Files}, {"seasons", mov.Seasons}, {"torrentid", mov.TorrentID}}}}
 	_, err := d.mov.UpdateOne(ctx, filter, update)
 	if err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func (d Database) GetMovie(ctx context.Context, id string) (*model.Movie, error) {
+	ctx, cancel := context.WithTimeout(ctx, databaseTimeout)
+	defer cancel()
+
+	result := d.mov.FindOne(ctx, bson.D{{Key: "_id", Value: id}})
+	if errors.Is(result.Err(), mongo.ErrNoDocuments) {
+		return nil, nil
+	}
+
+	if result.Err() != nil {
+		return nil, result.Err()
+	}
+
+	mov := model.Movie{}
+	if err := result.Decode(&mov); err != nil {
+		return nil, err
+	}
+
+	return &mov, nil
 }

@@ -100,7 +100,7 @@ func (l LibraryService) searchAndDownloadMovie(ctx context.Context, mov *model.M
 	return nil
 }
 
-func (l LibraryService) DownloadMovie(ctx context.Context, request *rms_library.DownloadMovieRequest, response *rms_library.DownloadMovieResponse) error {
+func (l LibraryService) DownloadMovieAuto(ctx context.Context, request *rms_library.DownloadMovieAutoRequest, response *rms_library.DownloadMovieAutoResponse) error {
 	var downloadedSeasons []uint32
 
 	logger.Infof("DownloadMovie: %s", request.Id)

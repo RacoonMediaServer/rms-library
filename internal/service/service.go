@@ -20,16 +20,22 @@ type LibraryService struct {
 	m    DirectoryManager
 }
 
-type DirectoryManager interface {
-	CreateMovieLayout(mov *model.Movie) error
-}
-
-func (l LibraryService) GetTvSeriesUpdates(ctx context.Context, empty *emptypb.Empty, response *rms_library.GetTvSeriesUpdatesResponse) error {
+func (l LibraryService) FindMovieTorrents(ctx context.Context, request *rms_library.FindMovieTorrentsRequest, response *rms_library.FindTorrentsResponse) error {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (l LibraryService) GetMovieInfo(ctx context.Context, request *rms_library.GetMovieInfoRequest, info *rms_library.MovieInfo) error {
+func (l LibraryService) FindTorrents(ctx context.Context, request *rms_library.FindTorrentsRequest, response *rms_library.FindTorrentsResponse) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (l LibraryService) DownloadTorrent(ctx context.Context, request *rms_library.DownloadTorrentRequest, empty *emptypb.Empty) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (l LibraryService) GetTvSeriesUpdates(ctx context.Context, empty *emptypb.Empty, response *rms_library.GetTvSeriesUpdatesResponse) error {
 	//TODO implement me
 	panic("implement me")
 }
@@ -39,9 +45,8 @@ func (l LibraryService) GetMovies(ctx context.Context, request *rms_library.GetM
 	panic("implement me")
 }
 
-func (l LibraryService) GetMovieLayout(ctx context.Context, request *rms_library.GetMovieLayoutRequest, response *rms_library.GetMovieLayoutResponse) error {
-	//TODO implement me
-	panic("implement me")
+type DirectoryManager interface {
+	CreateMovieLayout(mov *model.Movie) error
 }
 
 func NewService(db Database, f servicemgr.ServiceFactory, cli *client.Client, auth runtime.ClientAuthInfoWriter, m DirectoryManager) rms_library.RmsLibraryHandler {

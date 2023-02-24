@@ -4,10 +4,7 @@ import rms_library "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-li
 
 // Season represents one season of TV series
 type Season struct {
-	// No is a number of season
-	No uint
-
-	// TorrentID is a torrent ID on rms-torrent service
+	// TorrentID is a torrent ID of season on rms-torrent service
 	TorrentID string
 
 	// Episodes is a list of contained media
@@ -22,56 +19,38 @@ type Movie struct {
 	// Info about movie/series
 	Info rms_library.MovieInfo
 
-	// Files maps torrent IDs to file set on data storage (for films)
-	Files map[string][]File
+	// ID of torrent of entire media content (can be empty)
+	TorrentID string
+
+	// Files contains of film files
+	Files []File
 
 	// Seasons contain all info about downloaded seasons of TV series
-	Seasons []Season
+	Seasons map[uint]*Season
 }
 
 func (m *Movie) IsSeasonDownloaded(no uint) bool {
-	for i := range m.Seasons {
-		if m.Seasons[i].No == no {
-			return true
-		}
-	}
-	return false
+	_, ok := m.Seasons[no]
+	return ok
 }
 
 func (m *Movie) AddFile(torrentID string, f File, season uint) {
 	if m.Info.Type == rms_library.MovieType_Film || season == 0 {
-		if m.Files == nil {
-			m.Files = make(map[string][]File)
-		}
-		m.Files[torrentID] = append(m.Files[torrentID], f)
+		m.TorrentID = torrentID
+		m.Files = append(m.Files, f)
 		return
 	}
-
-	for i := range m.Seasons {
-		s := &m.Seasons[i]
-		if s.TorrentID == torrentID && s.No == season {
-			s.Episodes = append(s.Episodes, f)
-			return
+	if m.Seasons == nil {
+		m.Seasons = make(map[uint]*Season)
+	}
+	s, ok := m.Seasons[season]
+	if !ok {
+		s = &Season{
+			TorrentID: torrentID,
+			Episodes:  []File{f},
 		}
+		m.Seasons[season] = s
 	}
 
-	s := Season{
-		No:        season,
-		TorrentID: torrentID,
-		Episodes:  []File{f},
-	}
-	m.Seasons = append(m.Seasons, s)
-}
-
-func (m *Movie) HasSeasonVariants(no uint) bool {
-	cnt := 0
-	for _, s := range m.Seasons {
-		if s.No == no {
-			cnt++
-			if cnt >= 2 {
-				return true
-			}
-		}
-	}
-	return false
+	s.Episodes = append(s.Episodes, f)
 }
