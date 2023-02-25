@@ -54,3 +54,12 @@ func (m *Movie) AddFile(torrentID string, f File, season uint) {
 
 	s.Episodes = append(s.Episodes, f)
 }
+
+func (m *Movie) FindSeasonByTorrentID(torrentID string) (uint, bool) {
+	for no, s := range m.Seasons {
+		if s.TorrentID == torrentID {
+			return no, true
+		}
+	}
+	return 0, false
+}
