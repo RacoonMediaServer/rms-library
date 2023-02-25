@@ -26,13 +26,11 @@ func (l LibraryService) GetTvSeriesUpdates(ctx context.Context, empty *emptypb.E
 	panic("implement me")
 }
 
-func (l LibraryService) GetMovies(ctx context.Context, request *rms_library.GetMoviesRequest, response *rms_library.GetMoviesResponse) error {
-	//TODO implement me
-	panic("implement me")
-}
-
 type DirectoryManager interface {
 	CreateMovieLayout(mov *model.Movie) error
+	GetFilmFilePath(title string, f *model.File) string
+	GetTvSeriesFilePath(title string, season uint, f *model.File) string
+	DeleteMovieLayout(mov *model.Movie) error
 }
 
 func NewService(db Database, f servicemgr.ServiceFactory, cli *client.Client, auth runtime.ClientAuthInfoWriter, m DirectoryManager) rms_library.RmsLibraryHandler {

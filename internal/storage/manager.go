@@ -10,6 +10,7 @@ import (
 )
 
 const mediaPerms = 0755
+const downloadPerms = 0777
 
 // Manager is responsible for management content on a disk
 type Manager struct {
@@ -25,17 +26,19 @@ func (m Manager) CreateDefaultLayout() error {
 	if err := os.MkdirAll(m.MoviesDirectory(), mediaPerms); err != nil {
 		return fmt.Errorf("create torrents directory failed: %w", err)
 	}
+	if err := os.MkdirAll(m.DownloadsDirectory(), downloadPerms); err != nil {
+		return fmt.Errorf("create downloads directory failed: %w", err)
+	}
 	return nil
 }
 
 func (m Manager) createFilmLinks(dir, torrent string, files []model.File) error {
 	for _, f := range files {
 		if f.Type != model.FileTypeInsignificant {
-			_, fileName := path.Split(f.Path)
 			oldName := path.Join(m.TorrentsDirectory(), torrent, f.Path)
-			newName := path.Join(dir, fileName)
+			newName := path.Join(dir, f.String())
 			if err := os.Symlink(oldName, newName); err != nil {
-				return err
+				logger.Warnf("Create link failed: %s", err)
 			}
 		}
 	}
@@ -48,16 +51,10 @@ func (m Manager) createSeasonLinks(dir string, no uint, s *model.Season) error {
 		if e.Type == model.FileTypeInsignificant {
 			continue
 		}
-		_, fileName := path.Split(e.Path)
-		ext := path.Ext(e.Path)
-
-		if e.No > -1 {
-			fileName = fmt.Sprintf("S%02dE%02d. %s%s", no, e.No, e.Title, ext)
-		}
 		oldName := path.Join(m.TorrentsDirectory(), s.TorrentID, e.Path)
-		newName := path.Join(dir, fileName)
+		newName := path.Join(dir, e.String())
 		if err := os.Symlink(oldName, newName); err != nil {
-			logger.Warnf("create link failed: %s", err)
+			logger.Warnf("Create link failed: %s", err)
 		}
 	}
 
@@ -66,7 +63,7 @@ func (m Manager) createSeasonLinks(dir string, no uint, s *model.Season) error {
 
 // CreateMovieLayout creates pretty symbolic links to movie
 func (m Manager) CreateMovieLayout(mov *model.Movie) error {
-	dir := path.Join(m.MoviesDirectory(), mov.Info.Title) //
+	dir := path.Join(m.MoviesDirectory(), mov.Info.Title)
 	_ = os.RemoveAll(dir)
 
 	if err := os.MkdirAll(dir, mediaPerms); err != nil {
@@ -88,4 +85,20 @@ func (m Manager) CreateMovieLayout(mov *model.Movie) error {
 	}
 
 	return nil
+}
+
+// DeleteMovieLayout removes all links to the movie
+func (m Manager) DeleteMovieLayout(mov *model.Movie) error {
+	dir := path.Join(m.MoviesDirectory(), mov.Info.Title)
+	return os.RemoveAll(dir)
+}
+
+// GetFilmFilePath returns relative movie file path
+func (m Manager) GetFilmFilePath(title string, f *model.File) string {
+	return path.Join(title, f.String())
+}
+
+// GetTvSeriesFilePath returns relative tv-series episode path
+func (m Manager) GetTvSeriesFilePath(title string, season uint, f *model.File) string {
+	return path.Join(title, fmt.Sprintf("Сезон %d", season), f.String())
 }

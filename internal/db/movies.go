@@ -5,8 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"github.com/RacoonMediaServer/rms-library/internal/model"
+	rms_library "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-library"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func (d Database) GetDownloadedSeasons(ctx context.Context, id string) ([]uint, error) {
@@ -94,4 +96,35 @@ func (d Database) GetMovie(ctx context.Context, id string) (*model.Movie, error)
 	}
 
 	return &mov, nil
+}
+
+func (d Database) SearchMovies(ctx context.Context, movieType *rms_library.MovieType) ([]*model.Movie, error) {
+	ctx, cancel := context.WithTimeout(ctx, databaseTimeout)
+	defer cancel()
+
+	filter := bson.D{}
+	if movieType != nil {
+		filter = bson.D{{"info.type", int(*movieType)}}
+	}
+	opts := options.Find().SetSort(bson.D{{"info.title", 1}})
+
+	cur, err := d.mov.Find(ctx, filter, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	var results []*model.Movie
+	if err = cur.All(ctx, &results); err != nil {
+		return nil, err
+	}
+
+	return results, nil
+}
+
+func (d Database) DeleteMovie(ctx context.Context, id string) error {
+	ctx, cancel := context.WithTimeout(ctx, databaseTimeout)
+	defer cancel()
+
+	_, err := d.mov.DeleteOne(ctx, bson.D{{Key: "_id", Value: id}})
+	return err
 }

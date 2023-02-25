@@ -164,7 +164,7 @@ func (l LibraryService) downloadMovie(ctx context.Context, mov *model.Movie, lin
 func (l LibraryService) DownloadMovieAuto(ctx context.Context, request *rms_library.DownloadMovieAutoRequest, response *rms_library.DownloadMovieAutoResponse) error {
 	var downloadedSeasons []uint32
 
-	logger.Infof("DownloadMovie: %s", request.Id)
+	logger.Infof("DownloadMovieAuto: %s", request.Id)
 	mov, err := l.getOrCreateMovie(ctx, request.Id)
 	if err != nil {
 		err = fmt.Errorf("get or create movie failed: %s", err)
@@ -279,6 +279,7 @@ func (l LibraryService) FindMovieTorrents(ctx context.Context, request *rms_libr
 }
 
 func (l LibraryService) DownloadTorrent(ctx context.Context, request *rms_library.DownloadTorrentRequest, empty *emptypb.Empty) error {
+	logger.Infof("DownloadTorrent: %s", request.TorrentId)
 	mediaID, ok := l.torrentToMovieID[request.TorrentId]
 	if !ok {
 		err := errors.New("torrent link not found in the cache")
@@ -297,13 +298,13 @@ func (l LibraryService) DownloadTorrent(ctx context.Context, request *rms_librar
 }
 
 func (l LibraryService) FindTorrents(ctx context.Context, request *rms_library.FindTorrentsRequest, response *rms_library.FindTorrentsResponse) error {
+	logger.Infof("FindTorrents: %s", request.Query)
 	limitInt := int64(request.Limit)
-	strong := false
 	q := &torrents.SearchTorrentsParams{
 		Limit:   &limitInt,
 		Q:       request.Query,
 		Context: ctx,
-		Strong:  &strong,
+		Strong:  &request.Strong,
 	}
 
 	resp, err := l.cli.Torrents.SearchTorrents(q, l.auth)
