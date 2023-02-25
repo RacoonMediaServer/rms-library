@@ -33,7 +33,7 @@ type DirectoryManager interface {
 	DeleteMovieLayout(mov *model.Movie) error
 }
 
-func NewService(db Database, f servicemgr.ServiceFactory, cli *client.Client, auth runtime.ClientAuthInfoWriter, m DirectoryManager) rms_library.RmsLibraryHandler {
+func NewService(db Database, f servicemgr.ServiceFactory, cli *client.Client, auth runtime.ClientAuthInfoWriter, m DirectoryManager) *LibraryService {
 	return &LibraryService{
 		f:                f,
 		auth:             auth,

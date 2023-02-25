@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"github.com/RacoonMediaServer/rms-library/internal/config"
 	"github.com/RacoonMediaServer/rms-library/internal/db"
@@ -65,10 +66,18 @@ func main() {
 	}
 	logger.Info("Connected to database")
 
+	movies, err := database.SearchMovies(context.Background(), nil)
+	if err != nil {
+		logger.Fatalf("Retrieve info about movies failed: %s", err)
+	}
+
 	// создаем структуру директорий
 	dirManager := storage.Manager{BaseDirectory: cfg.Directory}
 	if err = dirManager.CreateDefaultLayout(); err != nil {
 		logger.Fatalf("Cannot create directories: %s", err)
+	}
+	if err = dirManager.CreateMoviesLayout(movies); err != nil {
+		logger.Fatalf("Cannot create movies directories: %s", err)
 	}
 
 	// создаем клиента к Remote-сервису rms-media-discovery
@@ -78,12 +87,17 @@ func main() {
 
 	lib := libraryService.NewService(database, f, discoveryClient, auth, dirManager)
 
+	// подписываемся на события от торрентов
+	if err = lib.Subscribe(service.Server()); err != nil {
+		logger.Fatalf("Subscribe failed: %s", err)
+	}
+
 	//регистрируем хендлеры
-	if err := rms_library.RegisterRmsLibraryHandler(service.Server(), lib); err != nil {
+	if err = rms_library.RegisterRmsLibraryHandler(service.Server(), lib); err != nil {
 		logger.Fatalf("Register service failed: %s", err)
 	}
 
-	if err := service.Run(); err != nil {
+	if err = service.Run(); err != nil {
 		logger.Fatalf("Run service failed: %s", err)
 	}
 }

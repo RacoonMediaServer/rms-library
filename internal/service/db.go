@@ -14,6 +14,7 @@ type Database interface {
 	UpdateMovieContent(mov *model.Movie) error
 	SearchMovies(ctx context.Context, movieType *rms_library.MovieType) ([]*model.Movie, error)
 	DeleteMovie(ctx context.Context, id string) error
+	FindMovieByTorrentID(ctx context.Context, torrentID string) (*model.Movie, error)
 
 	PutMovieInfo(ctx context.Context, id string, mov *rms_library.MovieInfo) error
 	GetMovieInfo(ctx context.Context, id string) (*rms_library.MovieInfo, error)

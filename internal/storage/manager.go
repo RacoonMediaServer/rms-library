@@ -53,6 +53,9 @@ func (m Manager) createSeasonLinks(dir string, no uint, s *model.Season) error {
 		}
 		oldName := path.Join(m.TorrentsDirectory(), s.TorrentID, e.Path)
 		newName := path.Join(dir, e.String())
+		if _, err := os.Stat(oldName); err != nil {
+			continue
+		}
 		if err := os.Symlink(oldName, newName); err != nil {
 			logger.Warnf("Create link failed: %s", err)
 		}
@@ -101,4 +104,20 @@ func (m Manager) GetFilmFilePath(title string, f *model.File) string {
 // GetTvSeriesFilePath returns relative tv-series episode path
 func (m Manager) GetTvSeriesFilePath(title string, season uint, f *model.File) string {
 	return path.Join(title, fmt.Sprintf("Сезон %d", season), f.String())
+}
+
+func (m Manager) CreateMoviesLayout(movies []*model.Movie) error {
+	dirs, err := os.ReadDir(m.MoviesDirectory())
+	if err != nil {
+		return err
+	}
+	for _, d := range dirs {
+		_ = os.RemoveAll(path.Join(m.MoviesDirectory(), d.Name()))
+	}
+
+	for _, mov := range movies {
+		_ = m.CreateMovieLayout(mov)
+	}
+
+	return nil
 }

@@ -36,7 +36,7 @@ func (l LibraryService) convertMovie(mov *model.Movie) *rms_library.Movie {
 }
 
 func (l LibraryService) GetMovie(ctx context.Context, request *rms_library.GetMovieRequest, response *rms_library.GetMovieResponse) error {
-	logger.Infof("GetMovie: %d", request.ID)
+	logger.Infof("GetMovie: %s", request.ID)
 	mov, err := l.db.GetMovie(ctx, request.ID)
 	if err != nil {
 		logger.Errorf("Cannot load movie from database: %s", err)
