@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/RacoonMediaServer/rms-library/internal/model"
 	rms_library "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-library"
+	"go-micro.dev/v4/logger"
 	"os"
 	"path"
 )
@@ -56,7 +57,7 @@ func (m Manager) createSeasonLinks(dir string, no uint, s *model.Season) error {
 		oldName := path.Join(m.TorrentsDirectory(), s.TorrentID, e.Path)
 		newName := path.Join(dir, fileName)
 		if err := os.Symlink(oldName, newName); err != nil {
-			return err
+			logger.Warnf("create link failed: %s", err)
 		}
 	}
 

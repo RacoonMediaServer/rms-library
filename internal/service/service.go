@@ -21,11 +21,6 @@ type LibraryService struct {
 	torrentToMovieID map[string]string
 }
 
-func (l LibraryService) FindTorrents(ctx context.Context, request *rms_library.FindTorrentsRequest, response *rms_library.FindTorrentsResponse) error {
-	//TODO implement me
-	panic("implement me")
-}
-
 func (l LibraryService) GetTvSeriesUpdates(ctx context.Context, empty *emptypb.Empty, response *rms_library.GetTvSeriesUpdatesResponse) error {
 	//TODO implement me
 	panic("implement me")

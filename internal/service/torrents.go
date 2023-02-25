@@ -18,7 +18,7 @@ import (
 
 var errAnyTorrentsNotFound = errors.New("any torrents not found")
 
-func (l LibraryService) searchTorrents(ctx context.Context, mov *rms_library.MovieInfo, season *uint32, limit uint) ([]*models.SearchTorrentsResult, error) {
+func (l LibraryService) searchMovieTorrents(ctx context.Context, mov *rms_library.MovieInfo, season *uint32, limit uint) ([]*models.SearchTorrentsResult, error) {
 	limitInt := int64(limit)
 	torrentType := "movies"
 	strong := true
@@ -85,7 +85,7 @@ func (l LibraryService) getOrCreateMovie(ctx context.Context, id string) (*model
 }
 
 func (l LibraryService) searchAndDownloadMovie(ctx context.Context, mov *model.Movie, season *uint32) error {
-	list, err := l.searchTorrents(ctx, &mov.Info, season, searchTorrentsLimit)
+	list, err := l.searchMovieTorrents(ctx, &mov.Info, season, searchTorrentsLimit)
 	if err != nil {
 		return err
 	}
@@ -99,21 +99,54 @@ func (l LibraryService) searchAndDownloadMovie(ctx context.Context, mov *model.M
 	return l.downloadMovie(ctx, mov, *list[0].Link)
 }
 
+func getUniqueSeasons(results []analysis.Result) map[uint]struct{} {
+	m := map[uint]struct{}{}
+	for _, r := range results {
+		m[r.Season] = struct{}{}
+	}
+	return m
+}
+
 func (l LibraryService) downloadMovie(ctx context.Context, mov *model.Movie, link string) error {
 	resp, err := l.downloadTorrent(ctx, link)
 	if err != nil {
 		return err
 	}
 
+	// анализируем контент раздачи
+	var results []analysis.Result
 	for _, file := range resp.Files {
-		result := analysis.Analyze(file)
+		results = append(results, analysis.Analyze(file))
+	}
+
+	// если это фильм и он уже скачан, необходимо заменить торрент
+	if mov.Info.Type == rms_library.MovieType_Film && len(mov.Files) != 0 {
+		l.removeTorrent(mov.TorrentID)
+		mov.TorrentID = ""
+		mov.Files = nil
+	}
+
+	if len(mov.Seasons) != 0 {
+		// какие то сезоны необходимо заменить новыми
+		seasons := getUniqueSeasons(results)
+		for no, _ := range seasons {
+			season, ok := mov.Seasons[no]
+			if ok {
+				l.removeTorrent(season.TorrentID)
+				delete(mov.Seasons, no)
+			}
+		}
+	}
+
+	// накидываем файлы
+	for i, file := range resp.Files {
 		f := model.File{
 			Path:  file,
-			Title: result.EpisodeName,
-			Type:  result.FileType,
-			No:    result.Episode,
+			Title: results[i].EpisodeName,
+			Type:  results[i].FileType,
+			No:    results[i].Episode,
 		}
-		mov.AddFile(resp.Id, f, result.Season)
+		mov.AddFile(resp.Id, f, results[i].Season)
 	}
 
 	if err = l.db.UpdateMovieContent(mov); err != nil {
@@ -226,7 +259,7 @@ func (l LibraryService) FindMovieTorrents(ctx context.Context, request *rms_libr
 		return err
 	}
 
-	resp, err := l.searchTorrents(ctx, &mov.Info, request.Season, uint(request.Limit))
+	resp, err := l.searchMovieTorrents(ctx, &mov.Info, request.Season, uint(request.Limit))
 	if err != nil {
 		err = fmt.Errorf("search torrents failed: %s", err)
 		logger.Error(err)
@@ -261,4 +294,32 @@ func (l LibraryService) DownloadTorrent(ctx context.Context, request *rms_librar
 	}
 
 	return l.downloadMovie(ctx, mov, request.TorrentId)
+}
+
+func (l LibraryService) FindTorrents(ctx context.Context, request *rms_library.FindTorrentsRequest, response *rms_library.FindTorrentsResponse) error {
+	limitInt := int64(request.Limit)
+	strong := false
+	q := &torrents.SearchTorrentsParams{
+		Limit:   &limitInt,
+		Q:       request.Query,
+		Context: ctx,
+		Strong:  &strong,
+	}
+
+	resp, err := l.cli.Torrents.SearchTorrents(q, l.auth)
+	if err != nil {
+		err = fmt.Errorf("search torrents failed: %w", err)
+		logger.Error(err)
+		return err
+	}
+
+	for _, t := range resp.Payload.Results {
+		response.Results = append(response.Results, &rms_library.Torrent{
+			Id:      *t.Link,
+			Title:   *t.Title,
+			Size:    uint64(*t.Size),
+			Seeders: uint32(*t.Seeders),
+		})
+	}
+	return nil
 }
