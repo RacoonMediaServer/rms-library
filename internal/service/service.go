@@ -13,24 +13,15 @@ import (
 const searchTorrentsLimit uint = 10
 
 type LibraryService struct {
-	f    servicemgr.ServiceFactory
-	auth runtime.ClientAuthInfoWriter
-	db   Database
-	cli  *client.Client
-	m    DirectoryManager
-}
-
-func (l LibraryService) FindMovieTorrents(ctx context.Context, request *rms_library.FindMovieTorrentsRequest, response *rms_library.FindTorrentsResponse) error {
-	//TODO implement me
-	panic("implement me")
+	f                servicemgr.ServiceFactory
+	auth             runtime.ClientAuthInfoWriter
+	db               Database
+	cli              *client.Client
+	m                DirectoryManager
+	torrentToMovieID map[string]string
 }
 
 func (l LibraryService) FindTorrents(ctx context.Context, request *rms_library.FindTorrentsRequest, response *rms_library.FindTorrentsResponse) error {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (l LibraryService) DownloadTorrent(ctx context.Context, request *rms_library.DownloadTorrentRequest, empty *emptypb.Empty) error {
 	//TODO implement me
 	panic("implement me")
 }
@@ -51,10 +42,11 @@ type DirectoryManager interface {
 
 func NewService(db Database, f servicemgr.ServiceFactory, cli *client.Client, auth runtime.ClientAuthInfoWriter, m DirectoryManager) rms_library.RmsLibraryHandler {
 	return &LibraryService{
-		f:    f,
-		auth: auth,
-		db:   db,
-		cli:  cli,
-		m:    m,
+		f:                f,
+		auth:             auth,
+		db:               db,
+		cli:              cli,
+		m:                m,
+		torrentToMovieID: map[string]string{},
 	}
 }

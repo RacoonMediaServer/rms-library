@@ -22,6 +22,7 @@ func convertMovie(mov *model.Movie) *rms_library.Movie {
 		return res
 	}
 	res.TvSeries = &rms_library.TvSeriesLayout{}
+	res.TvSeries.Seasons = map[uint32]*rms_library.TvSeriesLayout_Season{}
 	for no, s := range mov.Seasons {
 		l := rms_library.TvSeriesLayout_Season{}
 		for _, e := range s.Episodes {

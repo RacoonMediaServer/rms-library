@@ -12,17 +12,18 @@ import (
 	rms_library "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-library"
 	rms_torrent "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-torrent"
 	"go-micro.dev/v4/logger"
+	"google.golang.org/protobuf/types/known/emptypb"
 	"sort"
 )
 
 var errAnyTorrentsNotFound = errors.New("any torrents not found")
 
-func (l LibraryService) searchTorrents(ctx context.Context, mov *rms_library.MovieInfo, season *uint32) ([]*models.SearchTorrentsResult, error) {
-	limit := int64(searchTorrentsLimit)
+func (l LibraryService) searchTorrents(ctx context.Context, mov *rms_library.MovieInfo, season *uint32, limit uint) ([]*models.SearchTorrentsResult, error) {
+	limitInt := int64(limit)
 	torrentType := "movies"
 	strong := true
 	q := &torrents.SearchTorrentsParams{
-		Limit:   &limit,
+		Limit:   &limitInt,
 		Q:       mov.Title,
 		Season:  nil,
 		Type:    &torrentType,
@@ -49,6 +50,7 @@ func (l LibraryService) searchTorrents(ctx context.Context, mov *rms_library.Mov
 }
 
 func sortTorrentMovies(list []*models.SearchTorrentsResult) {
+	// хотим в приоритете иметь 1080p, в дальнейшем следует вынести в настройки
 	qualityPrior := map[string]int{
 		"1080p": 4,
 		"720p":  3,
@@ -60,8 +62,30 @@ func sortTorrentMovies(list []*models.SearchTorrentsResult) {
 	})
 }
 
+func (l LibraryService) getOrCreateMovie(ctx context.Context, id string) (*model.Movie, error) {
+	// 1. Вытаскиваем из кеша инфу о медиа
+	movInfo, err := l.db.GetMovieInfo(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	if movInfo == nil {
+		return nil, err
+	}
+
+	// 2. Создаем или вытаскиваем существующую инфу из базы о медиа
+	mov := &model.Movie{
+		ID:   id,
+		Info: *movInfo,
+	}
+	if err := l.db.GetOrCreateMovie(ctx, mov); err != nil {
+		return nil, err
+	}
+	return mov, nil
+}
+
 func (l LibraryService) searchAndDownloadMovie(ctx context.Context, mov *model.Movie, season *uint32) error {
-	list, err := l.searchTorrents(ctx, &mov.Info, season)
+	list, err := l.searchTorrents(ctx, &mov.Info, season, searchTorrentsLimit)
 	if err != nil {
 		return err
 	}
@@ -72,7 +96,11 @@ func (l LibraryService) searchAndDownloadMovie(ctx context.Context, mov *model.M
 
 	sortTorrentMovies(list)
 
-	resp, err := l.downloadTorrent(ctx, list[0])
+	return l.downloadMovie(ctx, mov, *list[0].Link)
+}
+
+func (l LibraryService) downloadMovie(ctx context.Context, mov *model.Movie, link string) error {
+	resp, err := l.downloadTorrent(ctx, link)
 	if err != nil {
 		return err
 	}
@@ -104,36 +132,19 @@ func (l LibraryService) DownloadMovieAuto(ctx context.Context, request *rms_libr
 	var downloadedSeasons []uint32
 
 	logger.Infof("DownloadMovie: %s", request.Id)
-	// 1. Вытаскиваем из кеша инфу о медиа
-	movInfo, err := l.db.GetMovieInfo(ctx, request.Id)
+	mov, err := l.getOrCreateMovie(ctx, request.Id)
 	if err != nil {
-		logger.Errorf("Get movie info from cache failed: %s", err)
-		return err
-	}
-
-	if movInfo == nil {
-		err := fmt.Errorf("movie '%s' not found in the cache", request.Id)
-		logger.Warn(err)
-		return err
-	}
-
-	// 2. Создаем или вытаскиваем существующую инфу из базы о медиа
-	mov := &model.Movie{
-		ID:   request.Id,
-		Info: *movInfo,
-	}
-	if err := l.db.GetOrCreateMovie(ctx, mov); err != nil {
-		err := fmt.Errorf("database error: %w", err)
+		err = fmt.Errorf("get or create movie failed: %s", err)
 		logger.Error(err)
 		return err
 	}
 
-	// 3. Создаем список сезонов для скачивания
+	// создаем список сезонов для скачивания
 	var seasons []uint32
-	if movInfo.Type == rms_library.MovieType_TvSeries {
+	if mov.Info.Type == rms_library.MovieType_TvSeries {
 		if request.Season == nil {
-			if movInfo.Seasons != nil {
-				for i := 1; i <= int(*movInfo.Seasons); i++ {
+			if mov.Info.Seasons != nil {
+				for i := 1; i <= int(*mov.Info.Seasons); i++ {
 					if !mov.IsSeasonDownloaded(uint(i)) {
 						seasons = append(seasons, uint32(i))
 					}
@@ -144,14 +155,14 @@ func (l LibraryService) DownloadMovieAuto(ctx context.Context, request *rms_libr
 		}
 
 		if len(seasons) == 0 {
-			logger.Warnf("Cannot find any season for '%s'", movInfo.Title)
+			logger.Warnf("Cannot find any season for '%s'", mov.Info.Title)
 			return nil
 		}
 
 		// скачиваем все сезоны
 		for _, s := range seasons {
 			if err := l.searchAndDownloadMovie(ctx, mov, &s); err != nil {
-				logger.Errorf("Cannot download season #%d of '%s': %s", s, movInfo.Title, err)
+				logger.Errorf("Cannot download season #%d of '%s': %s", s, mov.Info.Title, err)
 				continue
 			}
 			downloadedSeasons = append(downloadedSeasons, s)
@@ -177,9 +188,9 @@ func (l LibraryService) DownloadMovieAuto(ctx context.Context, request *rms_libr
 	return nil
 }
 
-func (l LibraryService) downloadTorrent(ctx context.Context, t *models.SearchTorrentsResult) (*rms_torrent.DownloadResponse, error) {
+func (l LibraryService) downloadTorrent(ctx context.Context, link string) (*rms_torrent.DownloadResponse, error) {
 	download := &torrents.DownloadTorrentParams{
-		Link:    *t.Link,
+		Link:    link,
 		Context: ctx,
 	}
 	buf := bytes.NewBuffer([]byte{})
@@ -203,4 +214,51 @@ func (l LibraryService) removeTorrent(id string) {
 	if err != nil {
 		logger.Errorf("Remove torrent failed: %s", err)
 	}
+}
+
+func (l LibraryService) FindMovieTorrents(ctx context.Context, request *rms_library.FindMovieTorrentsRequest, response *rms_library.FindTorrentsResponse) error {
+	logger.Infof("FindMovieTorrents: %s", request.Id)
+
+	mov, err := l.getOrCreateMovie(ctx, request.Id)
+	if err != nil {
+		err = fmt.Errorf("get or create movie failed: %s", err)
+		logger.Error(err)
+		return err
+	}
+
+	resp, err := l.searchTorrents(ctx, &mov.Info, request.Season, uint(request.Limit))
+	if err != nil {
+		err = fmt.Errorf("search torrents failed: %s", err)
+		logger.Error(err)
+		return err
+	}
+
+	for _, t := range resp {
+		response.Results = append(response.Results, &rms_library.Torrent{
+			Id:      *t.Link,
+			Title:   *t.Title,
+			Size:    uint64(*t.Size),
+			Seeders: uint32(*t.Seeders),
+		})
+		l.torrentToMovieID[*t.Link] = mov.ID
+	}
+	return nil
+}
+
+func (l LibraryService) DownloadTorrent(ctx context.Context, request *rms_library.DownloadTorrentRequest, empty *emptypb.Empty) error {
+	mediaID, ok := l.torrentToMovieID[request.TorrentId]
+	if !ok {
+		err := errors.New("torrent link not found in the cache")
+		logger.Warn(err)
+		return err
+	}
+
+	mov, err := l.getOrCreateMovie(ctx, mediaID)
+	if err != nil {
+		err = fmt.Errorf("get or create movie failed: %s", err)
+		logger.Error(err)
+		return err
+	}
+
+	return l.downloadMovie(ctx, mov, request.TorrentId)
 }
