@@ -128,34 +128,3 @@ func (d Database) DeleteMovie(ctx context.Context, id string) error {
 	_, err := d.mov.DeleteOne(ctx, bson.D{{Key: "_id", Value: id}})
 	return err
 }
-
-func (d Database) FindMovieByTorrentID(ctx context.Context, torrentID string) (*model.Movie, error) {
-	ctx, cancel := context.WithTimeout(ctx, databaseTimeout)
-	defer cancel()
-
-	filter := bson.D{{"torrentid", torrentID}}
-
-	result := d.mov.FindOne(ctx, filter)
-	if result.Err() != nil {
-		if errors.Is(result.Err(), mongo.ErrNoDocuments) {
-			// очень не красиво, но по-другому в MongoDB можно только через JS сделать
-			// ~O(N^2), но один фиг это очень редко вызываться будет
-			movType := rms_library.MovieType_TvSeries
-			movies, err := d.SearchMovies(ctx, &movType)
-			if err != nil {
-				return nil, err
-			}
-			for _, mov := range movies {
-				for _, season := range mov.Seasons {
-					if season.TorrentID == torrentID {
-						return mov, nil
-					}
-				}
-			}
-			return nil, nil
-		}
-		return nil, result.Err()
-	}
-	mov := model.Movie{}
-	return &mov, result.Decode(&mov)
-}
