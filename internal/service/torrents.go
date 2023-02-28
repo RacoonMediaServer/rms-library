@@ -121,13 +121,6 @@ func (l LibraryService) downloadMovie(ctx context.Context, mov *model.Movie, lin
 		results = append(results, analysis.Analyze(file))
 	}
 
-	// если это фильм и он уже скачан, необходимо заменить торрент
-	if mov.Info.Type == rms_library.MovieType_Film && len(mov.Files) != 0 {
-		l.removeTorrent(mov.TorrentID)
-		mov.TorrentID = ""
-		mov.Files = nil
-	}
-
 	// какие то сезоны необходимо заменить новыми
 	seasons := getUniqueSeasons(results)
 	removeTorrents := l.dm.AddMovieDownload(resp.Id, mov, seasons)
