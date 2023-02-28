@@ -102,7 +102,9 @@ func (l LibraryService) searchAndDownloadMovie(ctx context.Context, mov *model.M
 func getUniqueSeasons(results []analysis.Result) map[uint]struct{} {
 	m := map[uint]struct{}{}
 	for _, r := range results {
-		m[r.Season] = struct{}{}
+		if r.Season != 0 {
+			m[r.Season] = struct{}{}
+		}
 	}
 	return m
 }
@@ -126,16 +128,11 @@ func (l LibraryService) downloadMovie(ctx context.Context, mov *model.Movie, lin
 		mov.Files = nil
 	}
 
-	if len(mov.Seasons) != 0 {
-		// какие то сезоны необходимо заменить новыми
-		seasons := getUniqueSeasons(results)
-		for no, _ := range seasons {
-			season, ok := mov.Seasons[no]
-			if ok {
-				l.removeTorrent(season.TorrentID)
-				delete(mov.Seasons, no)
-			}
-		}
+	// какие то сезоны необходимо заменить новыми
+	seasons := getUniqueSeasons(results)
+	removeTorrents := l.dm.AddMovieDownload(resp.Id, mov, seasons)
+	for _, t := range removeTorrents {
+		l.removeTorrent(t)
 	}
 
 	// накидываем файлы

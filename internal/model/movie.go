@@ -55,6 +55,37 @@ func (m *Movie) AddFile(torrentID string, f File, season uint) {
 	s.Episodes = append(s.Episodes, f)
 }
 
+func (m *Movie) ReplaceTorrentID(torrentID string) {
+	m.TorrentID = torrentID
+	m.Files = nil
+}
+
+func (m *Movie) AddOrReplaceSeasons(torrentID string, seasons map[uint]struct{}) (oldTorrents map[string][]uint) {
+	var newSeasons []uint
+	oldTorrents = map[string][]uint{}
+
+	for no, _ := range seasons {
+		season, ok := m.Seasons[no]
+		if !ok {
+			newSeasons = append(newSeasons, no)
+			continue
+		}
+		oldTorrents[season.TorrentID] = append(oldTorrents[season.TorrentID], no)
+		season.TorrentID = torrentID
+		season.Episodes = nil
+	}
+
+	for _, no := range newSeasons {
+		if m.Seasons == nil {
+			m.Seasons = map[uint]*Season{}
+		}
+		m.Seasons[no] = &Season{
+			TorrentID: torrentID,
+		}
+	}
+	return
+}
+
 func (m *Movie) FindSeasonByTorrentID(torrentID string) (uint, bool) {
 	for no, s := range m.Seasons {
 		if s.TorrentID == torrentID {
@@ -62,4 +93,8 @@ func (m *Movie) FindSeasonByTorrentID(torrentID string) (uint, bool) {
 		}
 	}
 	return 0, false
+}
+
+func (m *Movie) RemoveSeason(no uint) {
+	delete(m.Seasons, no)
 }

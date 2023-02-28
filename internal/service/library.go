@@ -19,7 +19,7 @@ func (l LibraryService) convertMovie(mov *model.Movie) *rms_library.Movie {
 			TorrentID: mov.TorrentID,
 		}
 		for _, f := range mov.Files {
-			res.Film.Files = append(res.Film.Files, l.m.GetFilmFilePath(mov.Info.Title, &f))
+			res.Film.Files = append(res.Film.Files, l.dir.GetFilmFilePath(mov.Info.Title, &f))
 		}
 		return res
 	}
@@ -28,7 +28,7 @@ func (l LibraryService) convertMovie(mov *model.Movie) *rms_library.Movie {
 	for no, s := range mov.Seasons {
 		layout := rms_library.TvSeriesLayout_Season{}
 		for _, e := range s.Episodes {
-			layout.Files = append(layout.Files, l.m.GetTvSeriesFilePath(mov.Info.Title, no, &e))
+			layout.Files = append(layout.Files, l.dir.GetTvSeriesFilePath(mov.Info.Title, no, &e))
 		}
 		res.TvSeries.Seasons[uint32(no)] = &layout
 	}
@@ -88,6 +88,9 @@ func (l LibraryService) DeleteMovie(ctx context.Context, request *rms_library.De
 		logger.Error(err)
 		return err
 	}
+	if mov == nil {
+		return nil
+	}
 
 	if err = l.db.DeleteMovie(ctx, request.ID); err != nil {
 		err = fmt.Errorf("delete movie failed: %w", err)
@@ -95,14 +98,10 @@ func (l LibraryService) DeleteMovie(ctx context.Context, request *rms_library.De
 		return err
 	}
 
-	if mov.TorrentID != "" {
-		l.removeTorrent(mov.TorrentID)
+	removeTorrents := l.dm.RemoveMovie(mov)
+	for _, t := range removeTorrents {
+		l.removeTorrent(t)
 	}
-	for _, s := range mov.Seasons {
-		l.removeTorrent(s.TorrentID)
-	}
-
-	_ = l.m.DeleteMovieLayout(mov)
 
 	return nil
 }

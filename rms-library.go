@@ -1,17 +1,14 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"github.com/RacoonMediaServer/rms-library/internal/config"
 	"github.com/RacoonMediaServer/rms-library/internal/db"
+	"github.com/RacoonMediaServer/rms-library/internal/downloads"
 	libraryService "github.com/RacoonMediaServer/rms-library/internal/service"
 	"github.com/RacoonMediaServer/rms-library/internal/storage"
-	"github.com/RacoonMediaServer/rms-media-discovery/pkg/client/client"
 	rms_library "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-library"
 	"github.com/RacoonMediaServer/rms-packages/pkg/service/servicemgr"
-	httptransport "github.com/go-openapi/runtime/client"
-	"github.com/go-openapi/strfmt"
 	"github.com/urfave/cli/v2"
 	"go-micro.dev/v4"
 	"go-micro.dev/v4/logger"
@@ -20,7 +17,6 @@ import (
 var Version = "v0.0.0"
 
 const serviceName = "rms-library"
-const discoveryEndpoint = "136.244.108.126"
 
 func main() {
 	logger.Infof("%s %s", serviceName, Version)
@@ -58,34 +54,34 @@ func main() {
 
 	cfg := config.Config()
 
-	f := servicemgr.NewServiceFactory(service)
-
 	database, err := db.Connect(cfg.Database)
 	if err != nil {
 		logger.Fatalf("Connect to database failed: %s", err)
 	}
 	logger.Info("Connected to database")
 
-	movies, err := database.SearchMovies(context.Background(), nil)
-	if err != nil {
-		logger.Fatalf("Retrieve info about movies failed: %s", err)
-	}
-
 	// создаем структуру директорий
 	dirManager := storage.Manager{BaseDirectory: cfg.Directory}
 	if err = dirManager.CreateDefaultLayout(); err != nil {
 		logger.Fatalf("Cannot create directories: %s", err)
 	}
-	if err = dirManager.CreateMoviesLayout(movies); err != nil {
-		logger.Fatalf("Cannot create movies directories: %s", err)
+
+	// создаем менеджер закачек
+	downloadManager := downloads.NewManager(database, dirManager)
+	if err = downloadManager.Initialize(); err != nil {
+		logger.Fatalf("Cannot initialize downloads manager: %s", err)
 	}
 
-	// создаем клиента к Remote-сервису rms-media-discovery
-	tr := httptransport.New(discoveryEndpoint, "/media", client.DefaultSchemes)
-	auth := httptransport.APIKeyAuth("X-Token", "header", cfg.Device)
-	discoveryClient := client.New(tr, strfmt.Default)
+	settings := libraryService.Settings{
+		ServiceFactory:   servicemgr.NewServiceFactory(service),
+		Database:         database,
+		DirectoryManager: dirManager,
+		DownloadsManager: downloadManager,
+		Remote:           cfg.Remote,
+		Device:           cfg.Device,
+	}
 
-	lib := libraryService.NewService(database, f, discoveryClient, auth, dirManager)
+	lib := libraryService.NewService(settings)
 
 	// подписываемся на события от торрентов
 	if err = lib.Subscribe(service.Server()); err != nil {

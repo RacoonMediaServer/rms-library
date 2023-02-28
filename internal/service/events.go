@@ -19,7 +19,12 @@ func (l LibraryService) handleNotification(ctx context.Context, event events.Not
 		return nil
 	}
 
-	mov, err := l.db.FindMovieByTorrentID(ctx, *event.TorrentID)
+	id, ok := l.dm.GetMovieByTorrent(*event.TorrentID)
+	if !ok {
+		return nil
+	}
+
+	mov, err := l.db.GetMovie(ctx, id)
 	if err != nil {
 		logger.Warnf("Find movie by torrent ID failed: %s", err)
 		return nil
@@ -28,38 +33,21 @@ func (l LibraryService) handleNotification(ctx context.Context, event events.Not
 	if mov != nil {
 		if event.Kind == events.Notification_DownloadComplete {
 			logger.Infof("Movie '%s' downloaded, creating layout", mov.Info.Title)
-			_ = l.m.CreateMovieLayout(mov)
+			if err = l.dir.CreateMovieLayout(mov); err != nil {
+				logger.Warnf("Create movie layout for %s failed: %s", mov.Info.Title, err)
+			}
 			return nil
 		}
 
 		if event.Kind == events.Notification_TorrentRemoved {
-			toDelete := false
-			if mov.TorrentID == *event.TorrentID {
-				logger.Infof("Torrent %s removed, so drop movie %s", *event.TorrentID, mov.ID)
-				toDelete = true
-			}
-
-			no, ok := mov.FindSeasonByTorrentID(*event.TorrentID)
-			if ok {
-				logger.Infof("Torrent %s removed, so drop season %d of %s", *event.TorrentID, no, mov.ID)
-				delete(mov.Seasons, no)
-				toDelete = len(mov.Seasons) == 0
-			}
-
-			if toDelete {
-				err = l.db.DeleteMovie(ctx, mov.ID)
-				if err == nil {
-					_ = l.m.DeleteMovieLayout(mov)
+			if l.dm.RemoveMovieTorrent(*event.TorrentID, mov) {
+				if err = l.db.DeleteMovie(context.Background(), mov.ID); err != nil {
+					logger.Errorf("Delete movie %s from database failed: %s", mov.Info.Title, err)
 				}
-			} else {
-				err = l.db.UpdateMovieContent(mov)
-				if err == nil {
-					_ = l.m.CreateMovieLayout(mov)
-				}
+				return nil
 			}
-
-			if err != nil {
-				logger.Errorf("Movie %s proceed deletion failed: %s", mov.ID, err)
+			if err = l.db.UpdateMovieContent(mov); err != nil {
+				logger.Errorf("Update movie %s in database failed: %s", mov.Info.Title, err)
 			}
 		}
 	}

@@ -19,3 +19,17 @@ type Database interface {
 	PutMovieInfo(ctx context.Context, id string, mov *rms_library.MovieInfo) error
 	GetMovieInfo(ctx context.Context, id string) (*rms_library.MovieInfo, error)
 }
+
+type DirectoryManager interface {
+	CreateMovieLayout(mov *model.Movie) error
+	GetFilmFilePath(title string, f *model.File) string
+	GetTvSeriesFilePath(title string, season uint, f *model.File) string
+	DeleteMovieLayout(mov *model.Movie) error
+}
+
+type DownloadsManager interface {
+	AddMovieDownload(torrentID string, mov *model.Movie, seasons map[uint]struct{}) (removeTorrents []string)
+	RemoveMovie(mov *model.Movie) (removeTorrents []string)
+	GetMovieByTorrent(torrentID string) (string, bool)
+	RemoveMovieTorrent(torrentID string, mov *model.Movie) (removeMovie bool)
+}

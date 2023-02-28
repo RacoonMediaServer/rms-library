@@ -2,6 +2,14 @@ package config
 
 import "github.com/RacoonMediaServer/rms-packages/pkg/configuration"
 
+// Remote is settings for connection to rms-bot-server service
+type Remote struct {
+	Scheme string
+	Host   string
+	Port   int
+	Path   string
+}
+
 // Configuration represents entire service configuration
 type Configuration struct {
 	// MongoDB connection string
@@ -12,6 +20,9 @@ type Configuration struct {
 
 	// Directory is a base media directory
 	Directory string
+
+	// Remote is settings to connect to the Remote Server
+	Remote Remote
 }
 
 var config Configuration
