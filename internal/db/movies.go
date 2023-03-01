@@ -77,6 +77,20 @@ func (d Database) UpdateMovieContent(ctx context.Context, mov *model.Movie) erro
 	return nil
 }
 
+func (d Database) UpdateAvailableContent(ctx context.Context, mov *model.Movie) error {
+	ctx, cancel := context.WithTimeout(ctx, databaseTimeout)
+	defer cancel()
+
+	filter := bson.D{{"_id", mov.ID}}
+	update := bson.D{{"$set", bson.D{{"LastAvailableCheck", mov.LastAvailableCheck}, {"AvailableSeasons", mov.AvailableSeasons}}}}
+	_, err := d.mov.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (d Database) GetMovie(ctx context.Context, id string) (*model.Movie, error) {
 	ctx, cancel := context.WithTimeout(ctx, databaseTimeout)
 	defer cancel()

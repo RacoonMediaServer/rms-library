@@ -1,6 +1,9 @@
 package model
 
-import rms_library "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-library"
+import (
+	rms_library "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-library"
+	"time"
+)
 
 // Season represents one season of TV series
 type Season struct {
@@ -24,6 +27,12 @@ type Movie struct {
 
 	// Files contains of film files
 	Files []File
+
+	// LastAvailableCheck is a time when check of available new seasons has been occurred
+	LastAvailableCheck time.Time
+
+	// AvailableSeasons contains season which available on trackers
+	AvailableSeasons []uint
 
 	// Seasons contain all info about downloaded seasons of TV series
 	Seasons map[uint]*Season

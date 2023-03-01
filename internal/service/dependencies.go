@@ -13,6 +13,7 @@ type Database interface {
 	GetOrCreateMovie(ctx context.Context, mov *model.Movie) error
 	GetMovie(ctx context.Context, id string) (*model.Movie, error)
 	SearchMovies(ctx context.Context, movieType *rms_library.MovieType) ([]*model.Movie, error)
+	UpdateAvailableContent(ctx context.Context, mov *model.Movie) error
 
 	PutMovieInfo(ctx context.Context, id string, mov *rms_library.MovieInfo) error
 	GetMovieInfo(ctx context.Context, id string) (*rms_library.MovieInfo, error)
