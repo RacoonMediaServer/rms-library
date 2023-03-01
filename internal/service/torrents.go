@@ -66,6 +66,28 @@ func sortTorrentMoviesBySeasons(list []*models.SearchTorrentsResult) {
 	})
 }
 
+func sortTorrentMoviesByFast(list []*models.SearchTorrentsResult) {
+	const requiredSeedersCount = 10
+
+	// отсортировали по размеру, но нужно еще учитывать кол-во сидов
+	sort.SliceStable(list, func(i, j int) bool {
+		return *list[i].Size < *list[j].Size
+	})
+
+searchSuitable:
+	for limit := requiredSeedersCount; limit > 0; limit-- {
+		// ищем первую с начала списка раздачу, у которой кол-во сидов максимально близко к вменяемому
+		for i, t := range list {
+			if *t.Seeders >= int64(limit) {
+				list[0], list[i] = list[i], list[0]
+				break searchSuitable
+			}
+		}
+	}
+
+	logger.Infof("Selected faster torrent: size = %d, seeders = %d", *list[0].Size, *list[0].Seeders)
+}
+
 func (l LibraryService) getOrCreateMovie(ctx context.Context, id string) (*model.Movie, error) {
 	// 1. Вытаскиваем из кеша инфу о медиа
 	movInfo, err := l.db.GetMovieInfo(ctx, id)
@@ -88,7 +110,7 @@ func (l LibraryService) getOrCreateMovie(ctx context.Context, id string) (*model
 	return mov, nil
 }
 
-func (l LibraryService) searchAndDownloadMovie(ctx context.Context, mov *model.Movie, season *uint32) error {
+func (l LibraryService) searchAndDownloadMovie(ctx context.Context, mov *model.Movie, season *uint32, faster bool) error {
 	list, err := l.searchMovieTorrents(ctx, &mov.Info, season, searchTorrentsLimit)
 	if err != nil {
 		return err
@@ -98,19 +120,23 @@ func (l LibraryService) searchAndDownloadMovie(ctx context.Context, mov *model.M
 		return errAnyTorrentsNotFound
 	}
 
-	sortTorrentMoviesByQuality(list)
+	if faster {
+		sortTorrentMoviesByFast(list)
+	} else {
+		sortTorrentMoviesByQuality(list)
+	}
 
-	return l.downloadMovie(ctx, mov, *list[0].Link)
+	return l.downloadMovie(ctx, mov, *list[0].Link, faster)
 }
 
-func (l LibraryService) downloadMovie(ctx context.Context, mov *model.Movie, link string) error {
+func (l LibraryService) downloadMovie(ctx context.Context, mov *model.Movie, link string, faster bool) error {
 	torrent, err := l.downloadTorrent(ctx, link)
 	if err != nil {
 		return fmt.Errorf("download torrent file failed: %w", err)
 	}
 
 	// добавляем в менеджер загрузок
-	if err = l.dm.DownloadMovie(ctx, mov, torrent); err != nil {
+	if err = l.dm.DownloadMovie(ctx, mov, torrent, faster); err != nil {
 		return fmt.Errorf("add movie to download manager failed: %w", err)
 	}
 
@@ -127,6 +153,8 @@ func (l LibraryService) DownloadMovieAuto(ctx context.Context, request *rms_libr
 		logger.Error(err)
 		return err
 	}
+
+	faster := request.Faster
 
 	// создаем список сезонов для скачивания
 	var seasons []uint32
@@ -152,7 +180,7 @@ func (l LibraryService) DownloadMovieAuto(ctx context.Context, request *rms_libr
 		}
 
 		// если ничего не скачано - пробуем скачать несколько сезонов одной раздачей (цель - чтоб все было одного качеств)
-		if !somethingAlreadyDownloaded && mov.Info.Type == rms_library.MovieType_TvSeries && request.Season == nil {
+		if !somethingAlreadyDownloaded && mov.Info.Type == rms_library.MovieType_TvSeries && request.Season == nil && !faster {
 			seasons, downloadedSeasons, err = l.searchAndDownloadMovieAtOnce(ctx, mov, seasons)
 			if err != nil {
 				logger.Warnf("Attempt to download all seasons at once failed: %s", err)
@@ -161,11 +189,12 @@ func (l LibraryService) DownloadMovieAuto(ctx context.Context, request *rms_libr
 
 		// скачиваем все сезоны
 		for _, s := range seasons {
-			if err := l.searchAndDownloadMovie(ctx, mov, &s); err != nil {
+			if err := l.searchAndDownloadMovie(ctx, mov, &s, faster); err != nil {
 				logger.Errorf("Cannot download season #%d of '%s': %s", s, mov.Info.Title, err)
 				continue
 			}
 			downloadedSeasons = append(downloadedSeasons, s)
+			faster = false
 		}
 
 		if len(downloadedSeasons) == 0 {
@@ -175,7 +204,7 @@ func (l LibraryService) DownloadMovieAuto(ctx context.Context, request *rms_libr
 		response.Found = true
 		response.Seasons = downloadedSeasons
 	} else {
-		if err := l.searchAndDownloadMovie(ctx, mov, nil); err != nil {
+		if err := l.searchAndDownloadMovie(ctx, mov, nil, faster); err != nil {
 			if errors.Is(err, errAnyTorrentsNotFound) {
 				return nil
 			}
@@ -248,7 +277,7 @@ func (l LibraryService) DownloadTorrent(ctx context.Context, request *rms_librar
 		return err
 	}
 
-	return l.downloadMovie(ctx, mov, request.TorrentId)
+	return l.downloadMovie(ctx, mov, request.TorrentId, false)
 }
 
 func (l LibraryService) FindTorrents(ctx context.Context, request *rms_library.FindTorrentsRequest, response *rms_library.FindTorrentsResponse) error {
@@ -304,7 +333,7 @@ func (l LibraryService) searchAndDownloadMovieAtOnce(ctx context.Context, mov *m
 	results = results[0:idx]
 	sortTorrentMoviesBySeasons(results)
 
-	if err = l.downloadMovie(ctx, mov, *results[0].Link); err != nil {
+	if err = l.downloadMovie(ctx, mov, *results[0].Link, false); err != nil {
 		return
 	}
 

@@ -126,13 +126,17 @@ func getUniqueSeasons(results []analysis.Result) map[uint]struct{} {
 }
 
 // DownloadMovie adds torrent to download and update movie info
-func (m *Manager) DownloadMovie(ctx context.Context, mov *model.Movie, torrent []byte) error {
+func (m *Manager) DownloadMovie(ctx context.Context, mov *model.Movie, torrent []byte, faster bool) error {
 	var torrentsToDelete []string
 
 	// ставим в очередь на скачивание торрент
 	resp, err := m.cli.Download(ctx, &rms_torrent.DownloadRequest{What: torrent})
 	if err != nil {
 		return fmt.Errorf("add torrent failed: %w", err)
+	}
+
+	if faster {
+		_, _ = m.cli.UpPriority(ctx, &rms_torrent.UpPriorityRequest{Id: resp.Id})
 	}
 
 	// анализируем контент раздачи
