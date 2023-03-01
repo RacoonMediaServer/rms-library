@@ -2,17 +2,24 @@ package downloads
 
 import (
 	"context"
+	"fmt"
+	"github.com/RacoonMediaServer/rms-library/internal/analysis"
 	"github.com/RacoonMediaServer/rms-library/internal/model"
 	"github.com/RacoonMediaServer/rms-media-discovery/pkg/media"
+	"github.com/RacoonMediaServer/rms-packages/pkg/events"
 	rms_library "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-library"
+	rms_torrent "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-torrent"
+	"go-micro.dev/v4/logger"
 	"sync"
 )
 
-// Manager is responsible for mapping torrents to movies and storage layout
+// Manager is responsible for downloading and management torrents
 type Manager struct {
-	mu               sync.RWMutex
-	db               Database
+	mu sync.RWMutex
+
+	cli              rms_torrent.RmsTorrentService
 	dm               DirectoryManager
+	db               Database
 	torrentToContent map[string]*content
 	contentToTorrent map[string][]string
 }
@@ -24,8 +31,9 @@ type content struct {
 }
 
 // NewManager creates a Manager instance
-func NewManager(db Database, dm DirectoryManager) *Manager {
+func NewManager(cli rms_torrent.RmsTorrentService, db Database, dm DirectoryManager) *Manager {
 	return &Manager{
+		cli:              cli,
 		db:               db,
 		dm:               dm,
 		torrentToContent: map[string]*content{},
@@ -35,9 +43,15 @@ func NewManager(db Database, dm DirectoryManager) *Manager {
 
 // Initialize loads content and builds downloads index
 func (m *Manager) Initialize() error {
+	// создаем раскладку директорий
+	if err := m.dm.CreateDefaultLayout(); err != nil {
+		return fmt.Errorf("create default layout failed: %s", err)
+	}
+
+	// загружаем все фильмы
 	movies, err := m.db.SearchMovies(context.Background(), nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("get movies from database failed: %s", err)
 	}
 
 	// заполняем индекс фильмами
@@ -76,48 +90,85 @@ func (m *Manager) Initialize() error {
 	return nil
 }
 
-func (m *Manager) removeTorrent(torrentID string) {
-	c := m.torrentToContent[torrentID]
-	delete(m.torrentToContent, torrentID)
-	tmp := m.contentToTorrent[c.id]
-	for i, t := range tmp {
-		if t == torrentID {
-			tmp[i] = tmp[len(tmp)-1]
-			tmp = tmp[:len(tmp)-1]
-			break
+func (m *Manager) removeTorrent(torrentID string, onlyFromCache bool) {
+	c, ok := m.torrentToContent[torrentID]
+	if ok {
+		delete(m.torrentToContent, torrentID)
+		tmp := m.contentToTorrent[c.id]
+		for i, t := range tmp {
+			if t == torrentID {
+				tmp[i] = tmp[len(tmp)-1]
+				tmp = tmp[:len(tmp)-1]
+				break
+			}
+		}
+		if len(tmp) == 0 {
+			delete(m.contentToTorrent, c.id)
+		} else {
+			m.contentToTorrent[c.id] = tmp
 		}
 	}
-	if len(tmp) == 0 {
-		delete(m.contentToTorrent, c.id)
-		return
+	if !onlyFromCache {
+		if _, err := m.cli.RemoveTorrent(context.Background(), &rms_torrent.RemoveTorrentRequest{Id: torrentID}); err != nil {
+			logger.Errorf("Delete torrent %s failed: %s", torrentID, err)
+		}
 	}
-	m.contentToTorrent[c.id] = tmp
 }
 
-// AddMovieDownload adds movie torrent to index, modify mov and returns torrents which need to delete
-func (m *Manager) AddMovieDownload(torrentID string, mov *model.Movie, seasons map[uint]struct{}) (removeTorrents []string) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	// для фильмов заменяем торрент и удаляем старый
-	if mov.Info.Type == rms_library.MovieType_Film {
-		if mov.TorrentID != "" {
-			removeTorrents = append(removeTorrents, mov.TorrentID)
-			m.removeTorrent(mov.TorrentID)
+func getUniqueSeasons(results []analysis.Result) map[uint]struct{} {
+	m := map[uint]struct{}{}
+	for _, r := range results {
+		if r.Season != 0 {
+			m[r.Season] = struct{}{}
 		}
+	}
+	return m
+}
 
-		mov.ReplaceTorrentID(torrentID)
+// DownloadMovie adds torrent to download and update movie info
+func (m *Manager) DownloadMovie(ctx context.Context, mov *model.Movie, torrent []byte) error {
+	var torrentsToDelete []string
 
-		m.torrentToContent[torrentID] = &content{
-			contentType: media.Movies,
-			id:          mov.ID,
-		}
-		m.contentToTorrent[mov.ID] = []string{torrentID}
-		return
+	// ставим в очередь на скачивание торрент
+	resp, err := m.cli.Download(ctx, &rms_torrent.DownloadRequest{What: torrent})
+	if err != nil {
+		return fmt.Errorf("add torrent failed: %w", err)
 	}
 
-	// ищем, какие сезоны заменяются с новым скачиванием
-	oldTorrents := mov.AddOrReplaceSeasons(torrentID, seasons)
+	// анализируем контент раздачи
+	var results []analysis.Result
+	for _, file := range resp.Files {
+		results = append(results, analysis.Analyze(file))
+	}
+
+	// какие то сезоны необходимо заменить новыми
+	seasons := getUniqueSeasons(results)
+	oldTorrents := mov.AddOrReplaceSeasons(resp.Id, seasons)
+
+	// помечаем прошлый торрент на удаление если происходит замена раздачи фильма
+	if mov.Info.Type == rms_library.MovieType_Film && mov.TorrentID != "" {
+		torrentsToDelete = append(torrentsToDelete, mov.TorrentID)
+		mov.ReplaceTorrentID(resp.Id)
+	}
+
+	// накидываем файлы
+	for i, file := range resp.Files {
+		f := model.File{
+			Path:  file,
+			Title: results[i].EpisodeName,
+			Type:  results[i].FileType,
+			No:    results[i].Episode,
+		}
+		mov.AddFile(resp.Id, f, results[i].Season)
+	}
+
+	if err = m.db.UpdateMovieContent(ctx, mov); err != nil {
+		m.removeTorrent(resp.Id, false)
+		return fmt.Errorf("update movie content failed: %s", err)
+	}
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
 
 	// удаляем торренты, которые нигде больше не используются
 	for t, s := range oldTorrents {
@@ -128,25 +179,32 @@ func (m *Manager) AddMovieDownload(torrentID string, mov *model.Movie, seasons m
 			}
 		}
 		if len(c.seasons) == 0 {
-			removeTorrents = append(removeTorrents, t)
-			m.removeTorrent(t)
+			torrentsToDelete = append(torrentsToDelete, t)
 		}
 	}
 
 	// добавляем торрент
-	m.torrentToContent[torrentID] = &content{
+	m.torrentToContent[resp.Id] = &content{
 		contentType: media.Movies,
 		id:          mov.ID,
 		seasons:     seasons,
 	}
 	tmp := m.contentToTorrent[mov.ID]
-	tmp = append(tmp, torrentID)
+	tmp = append(tmp, resp.Id)
 	m.contentToTorrent[mov.ID] = tmp
 
-	return
+	for _, t := range torrentsToDelete {
+		m.removeTorrent(t, false)
+	}
+
+	return nil
 }
 
-func (m *Manager) RemoveMovie(mov *model.Movie) (removeTorrents []string) {
+func (m *Manager) RemoveMovie(ctx context.Context, mov *model.Movie) error {
+	if err := m.db.DeleteMovie(ctx, mov.ID); err != nil {
+		return fmt.Errorf("delete movie from database failed: %w", err)
+	}
+
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -155,11 +213,12 @@ func (m *Manager) RemoveMovie(mov *model.Movie) (removeTorrents []string) {
 		return nil
 	}
 	for _, t := range torrents {
-		m.removeTorrent(t)
-		removeTorrents = append(removeTorrents, t)
+		m.removeTorrent(t, false)
 	}
-	_ = m.dm.DeleteMovieLayout(mov)
-	return torrents
+	if err := m.dm.DeleteMovieLayout(mov); err != nil {
+		logger.Errorf("Delete movie '%s' layout failed: %s", mov.Info.Title, err)
+	}
+	return nil
 }
 
 func (m *Manager) GetMovieByTorrent(torrentID string) (string, bool) {
@@ -173,26 +232,55 @@ func (m *Manager) GetMovieByTorrent(torrentID string) (string, bool) {
 	return c.id, ok
 }
 
-func (m *Manager) RemoveMovieTorrent(torrentID string, mov *model.Movie) (removeMovie bool) {
+func (m *Manager) HandleTorrentEvent(kind events.Notification_Kind, torrentID string, mov *model.Movie) {
+	switch kind {
+	case events.Notification_DownloadComplete:
+		logger.Infof("Movie '%s' download complete. creating layout", mov.Info.Title)
+		if err := m.dm.CreateMovieLayout(mov); err != nil {
+			logger.Errorf("Create layout for movie '%s' failed: %s", err)
+		}
+
+	case events.Notification_TorrentRemoved:
+		logger.Infof("Torrent %s of movie '%s' removed", torrentID, mov.Info.Title)
+		m.removeMovieTorrent(torrentID, mov)
+	default:
+		return
+	}
+}
+
+func (m *Manager) removeMovieTorrent(torrentID string, mov *model.Movie) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	c, ok := m.torrentToContent[torrentID]
 	if !ok {
-		return false
+		return
 	}
 
 	for no, _ := range c.seasons {
 		mov.RemoveSeason(no)
 	}
-	m.removeTorrent(torrentID)
 
-	if len(mov.Seasons) == 0 {
-		_ = m.dm.DeleteMovieLayout(mov)
-		return true
-	} else {
-		_ = m.dm.CreateMovieLayout(mov)
+	if len(mov.Seasons) != 0 {
+		if err := m.db.UpdateMovieContent(context.Background(), mov); err != nil {
+			logger.Errorf("Update movie '%s' in database failed: %s", mov.Info.Title, err)
+			return
+		}
+		if err := m.dm.CreateMovieLayout(mov); err != nil {
+			logger.Errorf("Update layout for movie '%s' failed: %s", mov.Info.Title, err)
+		}
+		m.removeTorrent(torrentID, true)
+		return
 	}
 
-	return false
+	if err := m.db.DeleteMovie(context.Background(), mov.ID); err != nil {
+		logger.Errorf("Delete movie '%s' from database failed: %s", mov.Info.Title, err)
+		return
+	}
+
+	m.removeTorrent(torrentID, true)
+
+	if err := m.dm.DeleteMovieLayout(mov); err != nil {
+		logger.Errorf("Delete layout for movie '%s' failed: %s", mov.Info.Title, err)
+	}
 }

@@ -31,25 +31,7 @@ func (l LibraryService) handleNotification(ctx context.Context, event events.Not
 	}
 
 	if mov != nil {
-		if event.Kind == events.Notification_DownloadComplete {
-			logger.Infof("Movie '%s' downloaded, creating layout", mov.Info.Title)
-			if err = l.dir.CreateMovieLayout(mov); err != nil {
-				logger.Warnf("Create movie layout for %s failed: %s", mov.Info.Title, err)
-			}
-			return nil
-		}
-
-		if event.Kind == events.Notification_TorrentRemoved {
-			if l.dm.RemoveMovieTorrent(*event.TorrentID, mov) {
-				if err = l.db.DeleteMovie(context.Background(), mov.ID); err != nil {
-					logger.Errorf("Delete movie %s from database failed: %s", mov.Info.Title, err)
-				}
-				return nil
-			}
-			if err = l.db.UpdateMovieContent(mov); err != nil {
-				logger.Errorf("Update movie %s in database failed: %s", mov.Info.Title, err)
-			}
-		}
+		l.dm.HandleTorrentEvent(event.Kind, *event.TorrentID, mov)
 	}
 
 	return nil

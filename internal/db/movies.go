@@ -63,8 +63,8 @@ func (d Database) GetOrCreateMovie(ctx context.Context, mov *model.Movie) error 
 	return nil
 }
 
-func (d Database) UpdateMovieContent(mov *model.Movie) error {
-	ctx, cancel := context.WithTimeout(context.Background(), databaseTimeout)
+func (d Database) UpdateMovieContent(ctx context.Context, mov *model.Movie) error {
+	ctx, cancel := context.WithTimeout(ctx, databaseTimeout)
 	defer cancel()
 
 	filter := bson.D{{"_id", mov.ID}}

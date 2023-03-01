@@ -5,12 +5,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/RacoonMediaServer/rms-library/internal/analysis"
 	"github.com/RacoonMediaServer/rms-library/internal/model"
 	"github.com/RacoonMediaServer/rms-media-discovery/pkg/client/client/torrents"
 	"github.com/RacoonMediaServer/rms-media-discovery/pkg/client/models"
 	rms_library "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-library"
-	rms_torrent "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-torrent"
 	"go-micro.dev/v4/logger"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"sort"
@@ -99,49 +97,15 @@ func (l LibraryService) searchAndDownloadMovie(ctx context.Context, mov *model.M
 	return l.downloadMovie(ctx, mov, *list[0].Link)
 }
 
-func getUniqueSeasons(results []analysis.Result) map[uint]struct{} {
-	m := map[uint]struct{}{}
-	for _, r := range results {
-		if r.Season != 0 {
-			m[r.Season] = struct{}{}
-		}
-	}
-	return m
-}
-
 func (l LibraryService) downloadMovie(ctx context.Context, mov *model.Movie, link string) error {
-	resp, err := l.downloadTorrent(ctx, link)
+	torrent, err := l.downloadTorrent(ctx, link)
 	if err != nil {
-		return err
+		return fmt.Errorf("download torrent file failed: %w", err)
 	}
 
-	// анализируем контент раздачи
-	var results []analysis.Result
-	for _, file := range resp.Files {
-		results = append(results, analysis.Analyze(file))
-	}
-
-	// какие то сезоны необходимо заменить новыми
-	seasons := getUniqueSeasons(results)
-	removeTorrents := l.dm.AddMovieDownload(resp.Id, mov, seasons)
-	for _, t := range removeTorrents {
-		l.removeTorrent(t)
-	}
-
-	// накидываем файлы
-	for i, file := range resp.Files {
-		f := model.File{
-			Path:  file,
-			Title: results[i].EpisodeName,
-			Type:  results[i].FileType,
-			No:    results[i].Episode,
-		}
-		mov.AddFile(resp.Id, f, results[i].Season)
-	}
-
-	if err = l.db.UpdateMovieContent(mov); err != nil {
-		l.removeTorrent(resp.Id)
-		return err
+	// добавляем в менеджер загрузок
+	if err = l.dm.DownloadMovie(ctx, mov, torrent); err != nil {
+		return fmt.Errorf("add movie to download manager failed: %w", err)
 	}
 
 	return nil
@@ -207,7 +171,7 @@ func (l LibraryService) DownloadMovieAuto(ctx context.Context, request *rms_libr
 	return nil
 }
 
-func (l LibraryService) downloadTorrent(ctx context.Context, link string) (*rms_torrent.DownloadResponse, error) {
+func (l LibraryService) downloadTorrent(ctx context.Context, link string) ([]byte, error) {
 	download := &torrents.DownloadTorrentParams{
 		Link:    link,
 		Context: ctx,
@@ -219,20 +183,7 @@ func (l LibraryService) downloadTorrent(ctx context.Context, link string) (*rms_
 		return nil, fmt.Errorf("download torrent file failed: %w", err)
 	}
 
-	service := l.f.NewTorrent()
-	resp, err := service.Download(ctx, &rms_torrent.DownloadRequest{What: buf.Bytes()})
-	if err != nil {
-		return nil, fmt.Errorf("push torrent file to queue failed: %w", err)
-	}
-	return resp, nil
-}
-
-func (l LibraryService) removeTorrent(id string) {
-	service := l.f.NewTorrent()
-	_, err := service.RemoveTorrent(context.Background(), &rms_torrent.RemoveTorrentRequest{Id: id})
-	if err != nil {
-		logger.Errorf("Remove torrent failed: %s", err)
-	}
+	return buf.Bytes(), nil
 }
 
 func (l LibraryService) FindMovieTorrents(ctx context.Context, request *rms_library.FindMovieTorrentsRequest, response *rms_library.FindTorrentsResponse) error {

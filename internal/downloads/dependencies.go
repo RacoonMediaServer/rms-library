@@ -6,14 +6,15 @@ import (
 	rms_library "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-library"
 )
 
-// Database is a database dependency
 type Database interface {
 	SearchMovies(ctx context.Context, movieType *rms_library.MovieType) ([]*model.Movie, error)
+	UpdateMovieContent(ctx context.Context, mov *model.Movie) error
+	DeleteMovie(ctx context.Context, id string) error
 }
 
-// DirectoryManager dependency for mapping torrents to media directories
 type DirectoryManager interface {
-	CreateMoviesLayout(movies []*model.Movie) error
-	DeleteMovieLayout(mov *model.Movie) error
+	CreateDefaultLayout() error
 	CreateMovieLayout(mov *model.Movie) error
+	DeleteMovieLayout(mov *model.Movie) error
+	CreateMoviesLayout(movies []*model.Movie) error
 }

@@ -60,20 +60,20 @@ func main() {
 	}
 	logger.Info("Connected to database")
 
+	// фабрика коннекторов к другим сервисам
+	f := servicemgr.NewServiceFactory(service)
+
 	// создаем структуру директорий
 	dirManager := storage.Manager{BaseDirectory: cfg.Directory}
-	if err = dirManager.CreateDefaultLayout(); err != nil {
-		logger.Fatalf("Cannot create directories: %s", err)
-	}
 
 	// создаем менеджер закачек
-	downloadManager := downloads.NewManager(database, dirManager)
+	downloadManager := downloads.NewManager(f.NewTorrent(), database, dirManager)
 	if err = downloadManager.Initialize(); err != nil {
 		logger.Fatalf("Cannot initialize downloads manager: %s", err)
 	}
 
 	settings := libraryService.Settings{
-		ServiceFactory:   servicemgr.NewServiceFactory(service),
+		ServiceFactory:   f,
 		Database:         database,
 		DirectoryManager: dirManager,
 		DownloadsManager: downloadManager,

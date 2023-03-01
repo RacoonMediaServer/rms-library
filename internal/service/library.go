@@ -89,18 +89,16 @@ func (l LibraryService) DeleteMovie(ctx context.Context, request *rms_library.De
 		return err
 	}
 	if mov == nil {
-		return nil
-	}
-
-	if err = l.db.DeleteMovie(ctx, request.ID); err != nil {
-		err = fmt.Errorf("delete movie failed: %w", err)
-		logger.Error(err)
+		err = fmt.Errorf("movie %s not found", request.ID)
+		logger.Warn(err)
 		return err
 	}
 
-	removeTorrents := l.dm.RemoveMovie(mov)
-	for _, t := range removeTorrents {
-		l.removeTorrent(t)
+	// удаляем через менеджер закачек, чтобы удалить связанные загрузки
+	if err = l.dm.RemoveMovie(ctx, mov); err != nil {
+		err = fmt.Errorf("delete movie %s failed: %w", mov.Info.Title, err)
+		logger.Error(err)
+		return err
 	}
 
 	return nil
