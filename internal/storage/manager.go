@@ -32,11 +32,11 @@ func (m Manager) CreateDefaultLayout() error {
 	return nil
 }
 
-func (m Manager) createFilmLinks(dir, torrent string, files []model.File) error {
-	for _, f := range files {
+func (m Manager) createFilmLinks(mov *model.Movie, dir string) error {
+	for _, f := range mov.Files {
 		if f.Type != model.FileTypeInsignificant {
-			oldName := path.Join(m.TorrentsDirectory(), torrent, f.Path)
-			newName := path.Join(dir, f.String())
+			oldName := path.Join(m.TorrentsDirectory(), mov.TorrentID, f.Path)
+			newName := path.Join(dir, composeFileName(mov, &f))
 			if err := os.Symlink(oldName, newName); err != nil {
 				logger.Warnf("Create link failed: %s", err)
 			}
@@ -46,13 +46,13 @@ func (m Manager) createFilmLinks(dir, torrent string, files []model.File) error 
 	return nil
 }
 
-func (m Manager) createSeasonLinks(dir string, no uint, s *model.Season) error {
+func (m Manager) createSeasonLinks(mov *model.Movie, dir string, no uint, s *model.Season) error {
 	for _, e := range s.Episodes {
 		if e.Type == model.FileTypeInsignificant {
 			continue
 		}
 		oldName := path.Join(m.TorrentsDirectory(), s.TorrentID, e.Path)
-		newName := path.Join(dir, e.String())
+		newName := path.Join(dir, composeFileName(mov, &e))
 		if _, err := os.Stat(oldName); err != nil {
 			continue
 		}
@@ -78,13 +78,13 @@ func (m Manager) CreateMovieLayout(mov *model.Movie) error {
 			if err := os.MkdirAll(dir, mediaPerms); err != nil {
 				return err
 			}
-			if err := m.createSeasonLinks(dir, no, season); err != nil {
+			if err := m.createSeasonLinks(mov, dir, no, season); err != nil {
 				return err
 			}
 		}
 
 	} else {
-		return m.createFilmLinks(dir, mov.TorrentID, mov.Files)
+		return m.createFilmLinks(mov, dir)
 	}
 
 	return nil
@@ -96,14 +96,12 @@ func (m Manager) DeleteMovieLayout(mov *model.Movie) error {
 	return os.RemoveAll(dir)
 }
 
-// GetFilmFilePath returns relative movie file path
-func (m Manager) GetFilmFilePath(title string, f *model.File) string {
-	return path.Join(title, f.String())
-}
-
-// GetTvSeriesFilePath returns relative tv-series episode path
-func (m Manager) GetTvSeriesFilePath(title string, season uint, f *model.File) string {
-	return path.Join(title, fmt.Sprintf("Сезон %d", season), f.String())
+// GetMovieFilePath returns relative tv-series or movie file path
+func (m Manager) GetMovieFilePath(mov *model.Movie, season uint, f *model.File) string {
+	if mov.Info.Type == rms_library.MovieType_Film {
+		return path.Join(mov.Info.Title, composeFileName(mov, f))
+	}
+	return path.Join(mov.Info.Title, fmt.Sprintf("Сезон %d", season), composeFileName(mov, f))
 }
 
 func (m Manager) CreateMoviesLayout(movies []*model.Movie) error {

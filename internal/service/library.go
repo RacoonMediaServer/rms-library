@@ -19,7 +19,7 @@ func (l LibraryService) convertMovie(mov *model.Movie) *rms_library.Movie {
 			TorrentID: mov.TorrentID,
 		}
 		for _, f := range mov.Files {
-			res.Film.Files = append(res.Film.Files, l.dir.GetFilmFilePath(mov.Info.Title, &f))
+			res.Film.Files = append(res.Film.Files, l.dir.GetMovieFilePath(mov, 0, &f))
 		}
 		return res
 	}
@@ -28,7 +28,7 @@ func (l LibraryService) convertMovie(mov *model.Movie) *rms_library.Movie {
 	for no, s := range mov.Seasons {
 		layout := rms_library.TvSeriesLayout_Season{}
 		for _, e := range s.Episodes {
-			layout.Files = append(layout.Files, l.dir.GetTvSeriesFilePath(mov.Info.Title, no, &e))
+			layout.Files = append(layout.Files, l.dir.GetMovieFilePath(mov, no, &e))
 		}
 		res.TvSeries.Seasons[uint32(no)] = &layout
 	}

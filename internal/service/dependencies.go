@@ -20,8 +20,7 @@ type Database interface {
 }
 
 type DirectoryManager interface {
-	GetFilmFilePath(title string, f *model.File) string
-	GetTvSeriesFilePath(title string, season uint, f *model.File) string
+	GetMovieFilePath(mov *model.Movie, season uint, f *model.File) string
 }
 
 type DownloadsManager interface {
