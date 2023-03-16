@@ -1,6 +1,9 @@
 package storage
 
-import "unicode"
+import (
+	"strings"
+	"unicode"
+)
 
 func getFirst[K comparable, V any](m map[K]V) (K, V) {
 	for k, v := range m {
@@ -10,7 +13,7 @@ func getFirst[K comparable, V any](m map[K]V) (K, V) {
 }
 
 func escape(s string) string {
-	return s
+	return strings.Replace(s, "/", "", -1)
 }
 
 func capitalize(s string) string {

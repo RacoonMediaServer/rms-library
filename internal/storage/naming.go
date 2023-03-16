@@ -26,7 +26,7 @@ func composeMovieFileName(mov *model.Movie, f *model.File) string {
 		if f.Title == "" {
 			return fileName
 		}
-		return f.Title + ext
+		return escape(f.Title) + ext
 	}
 
 	if f.No < 0 {
