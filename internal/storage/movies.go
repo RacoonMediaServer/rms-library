@@ -3,6 +3,9 @@ package storage
 import (
 	"fmt"
 	"github.com/RacoonMediaServer/rms-library/internal/model"
+	rms_library "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-library"
+	"go-micro.dev/v4/logger"
+	"os"
 	"path"
 	"unicode"
 	"unicode/utf8"
@@ -11,7 +14,7 @@ import (
 func getMovieDirectories(mov *model.Movie) (directories []string) {
 	title := escape(mov.Info.Title)
 
-	directories = append(directories, path.Join(getCategory(mov), title))
+	directories = append(directories, path.Join(getMovieCategoryDir(mov), title))
 
 	if mov.Info.Year != 0 {
 		directories = append(directories, path.Join(nameByYear, fmt.Sprintf("%d", mov.Info.Year), title))
@@ -27,4 +30,96 @@ func getMovieDirectories(mov *model.Movie) (directories []string) {
 	}
 
 	return
+}
+
+func (m *Manager) createFilmLinks(mov *model.Movie, dir string) {
+	for _, f := range mov.Files {
+		if f.Type != model.FileTypeInsignificant {
+			oldName := path.Join(m.TorrentsDirectory(), mov.TorrentID, f.Path)
+			newName := path.Join(dir, composeMovieFileName(mov, &f))
+			if err := os.Symlink(oldName, newName); err != nil {
+				logger.Warnf("Create link failed: %s", err)
+			}
+		}
+	}
+}
+
+func (m *Manager) createSeasonLinks(mov *model.Movie, dir string, no uint, s *model.Season) {
+	for _, e := range s.Episodes {
+		if e.Type == model.FileTypeInsignificant {
+			continue
+		}
+		oldName := path.Join(m.TorrentsDirectory(), s.TorrentID, e.Path)
+		newName := path.Join(dir, composeMovieFileName(mov, &e))
+		if _, err := os.Stat(oldName); err != nil {
+			continue
+		}
+		if err := os.Symlink(oldName, newName); err != nil {
+			logger.Warnf("Create link failed: %s", err)
+		}
+	}
+}
+
+// GetMovieFilePath returns relative tv-series or movie file path
+func (m *Manager) GetMovieFilePath(mov *model.Movie, season uint, f *model.File) string {
+	if mov.Info.Type == rms_library.MovieType_Film {
+		return path.Join(getMovieCategoryDir(mov), mov.Info.Title, composeMovieFileName(mov, f))
+	}
+	return path.Join(getMovieCategoryDir(mov), mov.Info.Title, fmt.Sprintf("Сезон %d", season), composeMovieFileName(mov, f))
+}
+
+func (m *Manager) CreateMoviesLayout(movies []*model.Movie) error {
+	dirs, err := os.ReadDir(m.MoviesDirectory())
+	if err != nil {
+		return err
+	}
+	for _, d := range dirs {
+		_ = os.RemoveAll(path.Join(m.MoviesDirectory(), d.Name()))
+	}
+
+	for _, mov := range movies {
+		m.CreateMovieLayout(mov)
+	}
+
+	return nil
+}
+
+// CreateMovieLayout creates pretty symbolic links to movie
+func (m *Manager) CreateMovieLayout(mov *model.Movie) {
+	m.cmd <- func() {
+		dirs := getMovieDirectories(mov)
+
+		for _, dir := range dirs {
+			dir = path.Join(m.MoviesDirectory(), dir)
+			_ = os.RemoveAll(dir)
+
+			if err := os.MkdirAll(dir, mediaPerms); err != nil {
+				logger.Warnf("Cannot create directory: %s", err)
+				continue
+			}
+			if mov.Info.Type == rms_library.MovieType_TvSeries {
+				for no, season := range mov.Seasons {
+					dir := path.Join(dir, fmt.Sprintf("Сезон %d", no))
+					if err := os.MkdirAll(dir, mediaPerms); err != nil {
+						logger.Warnf("Cannot create directory: %s", err)
+					}
+					m.createSeasonLinks(mov, dir, no, season)
+				}
+
+			} else {
+				m.createFilmLinks(mov, dir)
+			}
+		}
+	}
+}
+
+// DeleteMovieLayout removes all links to the movie
+func (m *Manager) DeleteMovieLayout(mov *model.Movie) {
+	m.cmd <- func() {
+		dirs := getMovieDirectories(mov)
+		for _, dir := range dirs {
+			dir = path.Join(m.MoviesDirectory(), dir)
+			_ = os.RemoveAll(dir)
+		}
+	}
 }

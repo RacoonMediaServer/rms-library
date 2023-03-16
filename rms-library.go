@@ -64,7 +64,10 @@ func main() {
 	f := servicemgr.NewServiceFactory(service)
 
 	// создаем структуру директорий
-	dirManager := storage.Manager{BaseDirectory: cfg.Directory}
+	dirManager, err := storage.NewManager(cfg.Directory)
+	if err != nil {
+		logger.Fatalf("Cannot initialize directory manager: %s", err)
+	}
 
 	// создаем менеджер закачек
 	downloadManager := downloads.NewManager(f.NewTorrent(), database, dirManager)

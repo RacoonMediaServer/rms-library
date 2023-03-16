@@ -15,7 +15,7 @@ const (
 	nameByYear   = "Год"
 )
 
-func composeFileName(mov *model.Movie, f *model.File) string {
+func composeMovieFileName(mov *model.Movie, f *model.File) string {
 	_, fileName := path.Split(f.Path)
 	ext := path.Ext(f.Path)
 
@@ -41,7 +41,7 @@ func composeFileName(mov *model.Movie, f *model.File) string {
 	return fmt.Sprintf("E%02d. %s", f.No, fileName)
 }
 
-func getCategory(mov *model.Movie) string {
+func getMovieCategoryDir(mov *model.Movie) string {
 	switch mov.Info.Type {
 	case rms_library.MovieType_TvSeries:
 		return nameTvSeries

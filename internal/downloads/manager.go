@@ -43,11 +43,6 @@ func NewManager(cli rms_torrent.RmsTorrentService, db Database, dm DirectoryMana
 
 // Initialize loads content and builds downloads index
 func (m *Manager) Initialize() error {
-	// создаем раскладку директорий
-	if err := m.dm.CreateDefaultLayout(); err != nil {
-		return fmt.Errorf("create default layout failed: %s", err)
-	}
-
 	// загружаем все фильмы
 	movies, err := m.db.SearchMovies(context.Background(), nil)
 	if err != nil {
