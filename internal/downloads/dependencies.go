@@ -14,7 +14,7 @@ type Database interface {
 
 type DirectoryManager interface {
 	CreateDefaultLayout() error
-	CreateMovieLayout(mov *model.Movie) error
-	DeleteMovieLayout(mov *model.Movie) error
+	CreateMovieLayout(mov *model.Movie)
+	DeleteMovieLayout(mov *model.Movie)
 	CreateMoviesLayout(movies []*model.Movie) error
 }

@@ -7,6 +7,14 @@ import (
 	"path"
 )
 
+const (
+	nameFilms    = "Фильмы"
+	nameTvSeries = "Сериалы"
+	nameByGenre  = "Жанры"
+	nameByAlpha  = "Алфавит"
+	nameByYear   = "Год"
+)
+
 func composeFileName(mov *model.Movie, f *model.File) string {
 	_, fileName := path.Split(f.Path)
 	ext := path.Ext(f.Path)
@@ -36,9 +44,9 @@ func composeFileName(mov *model.Movie, f *model.File) string {
 func getCategory(mov *model.Movie) string {
 	switch mov.Info.Type {
 	case rms_library.MovieType_TvSeries:
-		return "Сериалы"
+		return nameTvSeries
 	case rms_library.MovieType_Film:
-		return "Фильмы"
+		return nameFilms
 	default:
 		return ""
 	}

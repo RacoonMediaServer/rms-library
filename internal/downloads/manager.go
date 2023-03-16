@@ -219,9 +219,7 @@ func (m *Manager) RemoveMovie(ctx context.Context, mov *model.Movie) error {
 	for _, t := range torrents {
 		m.removeTorrent(t, false)
 	}
-	if err := m.dm.DeleteMovieLayout(mov); err != nil {
-		logger.Errorf("Delete movie '%s' layout failed: %s", mov.Info.Title, err)
-	}
+	m.dm.DeleteMovieLayout(mov)
 	return nil
 }
 
@@ -240,9 +238,7 @@ func (m *Manager) HandleTorrentEvent(kind events.Notification_Kind, torrentID st
 	switch kind {
 	case events.Notification_DownloadComplete:
 		logger.Infof("Movie '%s' download complete. creating layout", mov.Info.Title)
-		if err := m.dm.CreateMovieLayout(mov); err != nil {
-			logger.Errorf("Create layout for movie '%s' failed: %s", err)
-		}
+		m.dm.CreateMovieLayout(mov)
 
 	case events.Notification_TorrentRemoved:
 		logger.Infof("Torrent %s of movie '%s' removed", torrentID, mov.Info.Title)
@@ -270,9 +266,7 @@ func (m *Manager) removeMovieTorrent(torrentID string, mov *model.Movie) {
 			logger.Errorf("Update movie '%s' in database failed: %s", mov.Info.Title, err)
 			return
 		}
-		if err := m.dm.CreateMovieLayout(mov); err != nil {
-			logger.Errorf("Update layout for movie '%s' failed: %s", mov.Info.Title, err)
-		}
+		m.dm.CreateMovieLayout(mov)
 		m.removeTorrent(torrentID, true)
 		return
 	}
@@ -284,7 +278,5 @@ func (m *Manager) removeMovieTorrent(torrentID string, mov *model.Movie) {
 
 	m.removeTorrent(torrentID, true)
 
-	if err := m.dm.DeleteMovieLayout(mov); err != nil {
-		logger.Errorf("Delete layout for movie '%s' failed: %s", mov.Info.Title, err)
-	}
+	m.dm.DeleteMovieLayout(mov)
 }

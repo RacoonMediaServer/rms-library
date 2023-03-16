@@ -32,7 +32,7 @@ func (m Manager) CreateDefaultLayout() error {
 	return nil
 }
 
-func (m Manager) createFilmLinks(mov *model.Movie, dir string) error {
+func (m Manager) createFilmLinks(mov *model.Movie, dir string) {
 	for _, f := range mov.Files {
 		if f.Type != model.FileTypeInsignificant {
 			oldName := path.Join(m.TorrentsDirectory(), mov.TorrentID, f.Path)
@@ -42,11 +42,9 @@ func (m Manager) createFilmLinks(mov *model.Movie, dir string) error {
 			}
 		}
 	}
-
-	return nil
 }
 
-func (m Manager) createSeasonLinks(mov *model.Movie, dir string, no uint, s *model.Season) error {
+func (m Manager) createSeasonLinks(mov *model.Movie, dir string, no uint, s *model.Season) {
 	for _, e := range s.Episodes {
 		if e.Type == model.FileTypeInsignificant {
 			continue
@@ -60,40 +58,42 @@ func (m Manager) createSeasonLinks(mov *model.Movie, dir string, no uint, s *mod
 			logger.Warnf("Create link failed: %s", err)
 		}
 	}
-
-	return nil
 }
 
 // CreateMovieLayout creates pretty symbolic links to movie
-func (m Manager) CreateMovieLayout(mov *model.Movie) error {
-	dir := path.Join(m.MoviesDirectory(), getCategory(mov), mov.Info.Title)
-	_ = os.RemoveAll(dir)
+func (m Manager) CreateMovieLayout(mov *model.Movie) {
+	dirs := getMovieDirectories(mov)
 
-	if err := os.MkdirAll(dir, mediaPerms); err != nil {
-		return err
-	}
-	if mov.Info.Type == rms_library.MovieType_TvSeries {
-		for no, season := range mov.Seasons {
-			dir := path.Join(dir, fmt.Sprintf("Сезон %d", no))
-			if err := os.MkdirAll(dir, mediaPerms); err != nil {
-				return err
-			}
-			if err := m.createSeasonLinks(mov, dir, no, season); err != nil {
-				return err
-			}
+	for _, dir := range dirs {
+		dir = path.Join(m.MoviesDirectory(), dir)
+		_ = os.RemoveAll(dir)
+
+		if err := os.MkdirAll(dir, mediaPerms); err != nil {
+			logger.Warnf("Cannot create directory: %s", err)
+			continue
 		}
+		if mov.Info.Type == rms_library.MovieType_TvSeries {
+			for no, season := range mov.Seasons {
+				dir := path.Join(dir, fmt.Sprintf("Сезон %d", no))
+				if err := os.MkdirAll(dir, mediaPerms); err != nil {
+					logger.Warnf("Cannot create directory: %s", err)
+				}
+				m.createSeasonLinks(mov, dir, no, season)
+			}
 
-	} else {
-		return m.createFilmLinks(mov, dir)
+		} else {
+			m.createFilmLinks(mov, dir)
+		}
 	}
-
-	return nil
 }
 
 // DeleteMovieLayout removes all links to the movie
-func (m Manager) DeleteMovieLayout(mov *model.Movie) error {
-	dir := path.Join(m.MoviesDirectory(), getCategory(mov), mov.Info.Title)
-	return os.RemoveAll(dir)
+func (m Manager) DeleteMovieLayout(mov *model.Movie) {
+	dirs := getMovieDirectories(mov)
+	for _, dir := range dirs {
+		dir = path.Join(m.MoviesDirectory(), dir)
+		_ = os.RemoveAll(dir)
+	}
 }
 
 // GetMovieFilePath returns relative tv-series or movie file path
@@ -114,7 +114,7 @@ func (m Manager) CreateMoviesLayout(movies []*model.Movie) error {
 	}
 
 	for _, mov := range movies {
-		_ = m.CreateMovieLayout(mov)
+		m.CreateMovieLayout(mov)
 	}
 
 	return nil
