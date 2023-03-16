@@ -32,3 +32,14 @@ func composeFileName(mov *model.Movie, f *model.File) string {
 	}
 	return fmt.Sprintf("E%02d. %s", f.No, fileName)
 }
+
+func getCategory(mov *model.Movie) string {
+	switch mov.Info.Type {
+	case rms_library.MovieType_TvSeries:
+		return "Сериалы"
+	case rms_library.MovieType_Film:
+		return "Фильмы"
+	default:
+		return ""
+	}
+}

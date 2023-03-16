@@ -66,7 +66,7 @@ func (m Manager) createSeasonLinks(mov *model.Movie, dir string, no uint, s *mod
 
 // CreateMovieLayout creates pretty symbolic links to movie
 func (m Manager) CreateMovieLayout(mov *model.Movie) error {
-	dir := path.Join(m.MoviesDirectory(), mov.Info.Title)
+	dir := path.Join(m.MoviesDirectory(), getCategory(mov), mov.Info.Title)
 	_ = os.RemoveAll(dir)
 
 	if err := os.MkdirAll(dir, mediaPerms); err != nil {
@@ -92,16 +92,16 @@ func (m Manager) CreateMovieLayout(mov *model.Movie) error {
 
 // DeleteMovieLayout removes all links to the movie
 func (m Manager) DeleteMovieLayout(mov *model.Movie) error {
-	dir := path.Join(m.MoviesDirectory(), mov.Info.Title)
+	dir := path.Join(m.MoviesDirectory(), getCategory(mov), mov.Info.Title)
 	return os.RemoveAll(dir)
 }
 
 // GetMovieFilePath returns relative tv-series or movie file path
 func (m Manager) GetMovieFilePath(mov *model.Movie, season uint, f *model.File) string {
 	if mov.Info.Type == rms_library.MovieType_Film {
-		return path.Join(mov.Info.Title, composeFileName(mov, f))
+		return path.Join(getCategory(mov), mov.Info.Title, composeFileName(mov, f))
 	}
-	return path.Join(mov.Info.Title, fmt.Sprintf("Сезон %d", season), composeFileName(mov, f))
+	return path.Join(getCategory(mov), mov.Info.Title, fmt.Sprintf("Сезон %d", season), composeFileName(mov, f))
 }
 
 func (m Manager) CreateMoviesLayout(movies []*model.Movie) error {
