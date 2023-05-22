@@ -153,6 +153,7 @@ func (l LibraryService) DownloadMovieAuto(ctx context.Context, request *rms_libr
 		logger.Error(err)
 		return err
 	}
+	defer l.removeMovieIfEmpty(ctx, request.Id)
 
 	faster := request.Faster
 
@@ -241,6 +242,7 @@ func (l LibraryService) FindMovieTorrents(ctx context.Context, request *rms_libr
 		logger.Error(err)
 		return err
 	}
+	defer l.removeMovieIfEmpty(ctx, request.Id)
 
 	resp, err := l.searchMovieTorrents(ctx, &mov.Info, request.Season, uint(request.Limit))
 	if err != nil {
@@ -276,6 +278,7 @@ func (l LibraryService) DownloadTorrent(ctx context.Context, request *rms_librar
 		logger.Error(err)
 		return err
 	}
+	defer l.removeMovieIfEmpty(ctx, mediaID)
 
 	return l.downloadMovie(ctx, mov, request.TorrentId, false)
 }
@@ -352,4 +355,17 @@ func (l LibraryService) searchAndDownloadMovieAtOnce(ctx context.Context, mov *m
 	})
 
 	return
+}
+
+func (l LibraryService) removeMovieIfEmpty(ctx context.Context, id string) {
+	mov, err := l.db.GetMovie(ctx, id)
+	if err != nil {
+		return
+	}
+	if mov.TorrentID == "" && len(mov.Files) == 0 && len(mov.Seasons) == 0 {
+		logger.Debugf("Removing empty movie record: %s [ %s ]", id, mov.Info.Title)
+		if err = l.db.DeleteMovie(ctx, id); err != nil {
+			logger.Warnf("Remove empty movie '%s' failed: %s", id, err)
+		}
+	}
 }
