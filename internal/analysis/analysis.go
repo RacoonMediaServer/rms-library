@@ -21,7 +21,7 @@ func Analyze(fileName string) Result {
 	subResults := analyzeLayout(layout)
 	result := mergeResults(subResults)
 	if layout.IsVideoFile() {
-		if result.Episode != 0 {
+		if result.Season != 0 {
 			result.FileType = model.FileTypeEpisode
 		} else {
 			result.FileType = model.FileTypeFilm

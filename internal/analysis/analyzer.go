@@ -34,16 +34,19 @@ func analyzeFileName(name tokenList) analyzeResult {
 	// 2) если не удалось ищем сочетания S01, season01, 01season и пр.
 	determineSeason(&ctx)
 
-	// 4) вытаскиваем год
+	// 3) вытаскиваем год
 	determineYear(&ctx)
 
-	// 5) удаляем распознанные лишние слова
+	// 4) удаляем распознанные лишние слова
 	removeExtraWords(&ctx)
 
-	// 3) определяем эпизод
+	// 5) определяем эпизод
 	determineEpisode(&ctx)
 
-	// 6) пробуем угадать длину названия и обрезаем список
+	// 6) убираем префикс вида [...] Title
+	removePossiblePrefix(&ctx)
+
+	// 7) пробуем угадать длину названия и обрезаем список
 	titleLength := guessTitleLength(ctx.name, ctx.remove)
 	ctx.result.Tokens = crop(ctx.name, ctx.remove, titleLength)
 
@@ -136,6 +139,15 @@ func determineEpisode(ctx *analyzeContext) {
 			ctx.result.Episode = int(episode)
 			ctx.remove[pos] = true
 
+			if ctx.result.Season == 0 {
+				exp := regexp.MustCompile(`(\d+)x\d\d`)
+				matches := exp.FindStringSubmatch(ctx.name[pos].Text)
+				if len(matches) == 2 {
+					season, _ := strconv.ParseUint(matches[1], 10, 32)
+					ctx.result.Season = uint(season)
+				}
+			}
+
 			return
 		}
 	}
@@ -208,6 +220,19 @@ func removeExtraWords(ctx *analyzeContext) {
 	for _, r := range matched {
 		ctx.remove[r] = true
 	}
+}
+
+func removePossiblePrefix(ctx *analyzeContext) {
+	prefixIndex := 0
+	for i := range ctx.remove {
+		if !ctx.remove[i] {
+			prefixIndex = i
+			break
+		}
+	}
+
+	ctx.name = ctx.name[prefixIndex:]
+	ctx.remove = ctx.remove[prefixIndex:]
 }
 
 func guessTitleLength(name tokenList, remove []bool) int {
