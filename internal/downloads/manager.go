@@ -124,8 +124,14 @@ func getUniqueSeasons(results []analysis.Result) map[uint]struct{} {
 func (m *Manager) DownloadMovie(ctx context.Context, mov *model.Movie, torrent []byte, faster bool) error {
 	var torrentsToDelete []string
 
+	req := rms_torrent.DownloadRequest{
+		What:        torrent,
+		Description: mov.Info.Title,
+		Faster:      faster,
+	}
+
 	// ставим в очередь на скачивание торрент
-	resp, err := m.cli.Download(ctx, &rms_torrent.DownloadRequest{What: torrent})
+	resp, err := m.cli.Download(ctx, &req)
 	if err != nil {
 		return fmt.Errorf("add torrent failed: %w", err)
 	}
