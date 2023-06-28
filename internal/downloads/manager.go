@@ -299,7 +299,9 @@ func (m *Manager) GetMovieStoreSize(ctx context.Context, id string) uint64 {
 			logger.Warnf("Get torrent info failed: %s", err)
 			continue
 		}
-		size += info.SizeMB
+		if info.Status == rms_torrent.Status_Done {
+			size += info.SizeMB
+		}
 	}
 	return size
 }
