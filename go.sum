@@ -54,6 +54,8 @@ github.com/RacoonMediaServer/rms-media-discovery v1.4.0 h1:jSbSU9P6k17vP5OAbv0Tn
 github.com/RacoonMediaServer/rms-media-discovery v1.4.0/go.mod h1:B2PemTOf84B0wCfIE1ZLIqDPisletnuEmTOnlFJT+ss=
 github.com/RacoonMediaServer/rms-packages v1.8.11 h1:dOKLq3ByrKxQQRQT+LL4uj7ayAdCCjOfGqjCjmnQmXo=
 github.com/RacoonMediaServer/rms-packages v1.8.11/go.mod h1:WvLl0QLSz8rmeqBi3E+kPk+xxykb1SQEFsfVkv00iSI=
+github.com/RacoonMediaServer/rms-packages v1.9.3 h1:GXRlzSZzRb6LagfIjRir9etN/AAIPWdYk0hl5pX/v7c=
+github.com/RacoonMediaServer/rms-packages v1.9.3/go.mod h1:WvLl0QLSz8rmeqBi3E+kPk+xxykb1SQEFsfVkv00iSI=
 github.com/Shopify/sarama v1.19.0/go.mod h1:FVkBWblsNy7DGZRfXLU0O9RCGt5g3g3yEuWXgklEdEo=
 github.com/Shopify/toxiproxy v2.1.4+incompatible/go.mod h1:OXgGpZ6Cli1/URJOF1DMxUHB2q5Ap20/P/eIdh4G0pI=
 github.com/acomagu/bufpipe v1.0.3 h1:fxAGrHZTgQ9w5QqVItgzwj235/uYZYgbXitB+dLupOk=

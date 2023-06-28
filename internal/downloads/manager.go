@@ -9,8 +9,10 @@ import (
 	"github.com/RacoonMediaServer/rms-packages/pkg/events"
 	rms_library "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-library"
 	rms_torrent "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-torrent"
+	"go-micro.dev/v4/client"
 	"go-micro.dev/v4/logger"
 	"sync"
+	"time"
 )
 
 // Manager is responsible for downloading and management torrents
@@ -280,4 +282,24 @@ func (m *Manager) removeMovieTorrent(torrentID string, mov *model.Movie) {
 	m.removeTorrent(torrentID, true)
 
 	m.dm.DeleteMovieLayout(mov)
+}
+
+func (m *Manager) GetMovieStoreSize(ctx context.Context, id string) uint64 {
+	m.mu.RLock()
+	torrents, ok := m.contentToTorrent[id]
+	m.mu.RUnlock()
+	if !ok {
+		return 0
+	}
+
+	var size uint64
+	for _, t := range torrents {
+		info, err := m.cli.GetTorrentInfo(ctx, &rms_torrent.GetTorrentInfoRequest{Id: t}, client.WithRequestTimeout(5*time.Second))
+		if err != nil {
+			logger.Warnf("Get torrent info failed: %s", err)
+			continue
+		}
+		size += info.SizeMB
+	}
+	return size
 }

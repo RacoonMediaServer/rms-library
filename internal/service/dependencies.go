@@ -29,4 +29,5 @@ type DownloadsManager interface {
 	RemoveMovie(ctx context.Context, mov *model.Movie) error
 	GetMovieByTorrent(torrentID string) (string, bool)
 	HandleTorrentEvent(kind events.Notification_Kind, torrentID string, mov *model.Movie)
+	GetMovieStoreSize(ctx context.Context, id string) uint64
 }
