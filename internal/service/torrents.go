@@ -47,47 +47,6 @@ func (l LibraryService) searchMovieTorrents(ctx context.Context, mov *rms_librar
 	return resp.Payload.Results, nil
 }
 
-func sortTorrentMoviesByQuality(list []*models.SearchTorrentsResult) {
-	// хотим в приоритете иметь 1080p, в дальнейшем следует вынести в настройки
-	qualityPrior := map[string]int{
-		"1080p": 4,
-		"720p":  3,
-		"480p":  2,
-		"":      1,
-	}
-	sort.SliceStable(list, func(i, j int) bool {
-		return qualityPrior[list[i].Quality] > qualityPrior[list[j].Quality]
-	})
-}
-
-func sortTorrentMoviesBySeasons(list []*models.SearchTorrentsResult) {
-	sort.SliceStable(list, func(i, j int) bool {
-		return len(list[i].Seasons) > len(list[j].Seasons)
-	})
-}
-
-func sortTorrentMoviesByFast(list []*models.SearchTorrentsResult) {
-	const requiredSeedersCount = 10
-
-	// отсортировали по размеру, но нужно еще учитывать кол-во сидов
-	sort.SliceStable(list, func(i, j int) bool {
-		return *list[i].Size < *list[j].Size
-	})
-
-searchSuitable:
-	for limit := requiredSeedersCount; limit > 0; limit-- {
-		// ищем первую с начала списка раздачу, у которой кол-во сидов максимально близко к вменяемому
-		for i, t := range list {
-			if *t.Seeders >= int64(limit) {
-				list[0], list[i] = list[i], list[0]
-				break searchSuitable
-			}
-		}
-	}
-
-	logger.Infof("Selected faster torrent: size = %d, seeders = %d", *list[0].Size, *list[0].Seeders)
-}
-
 func (l LibraryService) getOrCreateMovie(ctx context.Context, id string) (*model.Movie, error) {
 	// 1. Вытаскиваем из кеша инфу о медиа
 	movInfo, err := l.db.GetMovieInfo(ctx, id)
@@ -126,7 +85,7 @@ func (l LibraryService) searchAndDownloadMovie(ctx context.Context, mov *model.M
 		sortTorrentMoviesByQuality(list)
 	}
 
-	return l.downloadMovie(ctx, mov, *list[0].Link, faster)
+	return l.downloadMovie(ctx, mov, *selectSuitableTorrent(list).Link, faster)
 }
 
 func (l LibraryService) downloadMovie(ctx context.Context, mov *model.Movie, link string, faster bool) error {
@@ -336,7 +295,7 @@ func (l LibraryService) searchAndDownloadMovieAtOnce(ctx context.Context, mov *m
 	results = results[0:idx]
 	sortTorrentMoviesBySeasons(results)
 
-	if err = l.downloadMovie(ctx, mov, *results[0].Link, false); err != nil {
+	if err = l.downloadMovie(ctx, mov, *selectSuitableTorrent(results).Link, false); err != nil {
 		return
 	}
 
