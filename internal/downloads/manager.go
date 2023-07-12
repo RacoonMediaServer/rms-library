@@ -123,7 +123,7 @@ func getUniqueSeasons(results []analysis.Result) map[uint]struct{} {
 }
 
 // DownloadMovie adds torrent to download and update movie info
-func (m *Manager) DownloadMovie(ctx context.Context, mov *model.Movie, torrent []byte, faster bool) error {
+func (m *Manager) DownloadMovie(ctx context.Context, mov *model.Movie, voice string, torrent []byte, faster bool) error {
 	var torrentsToDelete []string
 
 	req := rms_torrent.DownloadRequest{
@@ -168,6 +168,8 @@ func (m *Manager) DownloadMovie(ctx context.Context, mov *model.Movie, torrent [
 		}
 		mov.AddFile(resp.Id, f, results[i].Season)
 	}
+
+	mov.SetVoice(voice)
 
 	if err = m.db.UpdateMovieContent(ctx, mov); err != nil {
 		m.removeTorrent(resp.Id, false)

@@ -3,6 +3,7 @@ package service
 import (
 	"github.com/RacoonMediaServer/rms-library/internal/config"
 	"github.com/RacoonMediaServer/rms-media-discovery/pkg/client/client"
+	"github.com/RacoonMediaServer/rms-media-discovery/pkg/client/models"
 	"github.com/RacoonMediaServer/rms-packages/pkg/service/servicemgr"
 	"github.com/go-openapi/runtime"
 	httptransport "github.com/go-openapi/runtime/client"
@@ -20,6 +21,7 @@ type LibraryService struct {
 	dir              DirectoryManager
 	dm               DownloadsManager
 	torrentToMovieID map[string]string
+	torrentToResult  map[string]*models.SearchTorrentsResult
 }
 
 // Settings holds all dependencies of service
@@ -46,6 +48,7 @@ func NewService(settings Settings) *LibraryService {
 		dir:              settings.DirectoryManager,
 		dm:               settings.DownloadsManager,
 		torrentToMovieID: map[string]string{},
+		torrentToResult:  map[string]*models.SearchTorrentsResult{},
 	}
 
 	go l.checkAvailableUpdates()

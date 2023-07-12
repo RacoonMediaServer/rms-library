@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/RacoonMediaServer/rms-library/internal/model"
+	"github.com/RacoonMediaServer/rms-library/internal/selector"
 	"github.com/RacoonMediaServer/rms-media-discovery/pkg/client/client/torrents"
 	"github.com/RacoonMediaServer/rms-media-discovery/pkg/client/models"
 	rms_library "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-library"
@@ -79,23 +80,26 @@ func (l LibraryService) searchAndDownloadMovie(ctx context.Context, mov *model.M
 		return errAnyTorrentsNotFound
 	}
 
+	var torrent *models.SearchTorrentsResult
+
+	sel := l.getMovieSelector(mov)
 	if faster {
-		sortTorrentMoviesByFast(list)
+		torrent = sel.Select(selector.CriteriaFastest, list)
 	} else {
-		sortTorrentMoviesByQuality(list)
+		torrent = sel.Select(selector.CriteriaQuality, list)
 	}
 
-	return l.downloadMovie(ctx, mov, *selectSuitableTorrent(list).Link, faster)
+	return l.downloadMovie(ctx, mov, torrent, faster)
 }
 
-func (l LibraryService) downloadMovie(ctx context.Context, mov *model.Movie, link string, faster bool) error {
-	torrent, err := l.downloadTorrent(ctx, link)
+func (l LibraryService) downloadMovie(ctx context.Context, mov *model.Movie, t *models.SearchTorrentsResult, faster bool) error {
+	torrent, err := l.downloadTorrent(ctx, *t.Link)
 	if err != nil {
 		return fmt.Errorf("download torrent file failed: %w", err)
 	}
 
 	// добавляем в менеджер загрузок
-	if err = l.dm.DownloadMovie(ctx, mov, torrent, faster); err != nil {
+	if err = l.dm.DownloadMovie(ctx, mov, t.Voice, torrent, faster); err != nil {
 		return fmt.Errorf("add movie to download manager failed: %w", err)
 	}
 
@@ -218,6 +222,7 @@ func (l LibraryService) FindMovieTorrents(ctx context.Context, request *rms_libr
 			Seeders: uint32(*t.Seeders),
 		})
 		l.torrentToMovieID[*t.Link] = mov.ID
+		l.torrentToResult[*t.Link] = t
 	}
 	return nil
 }
@@ -230,6 +235,7 @@ func (l LibraryService) DownloadTorrent(ctx context.Context, request *rms_librar
 		logger.Warn(err)
 		return err
 	}
+	torrent := l.torrentToResult[request.TorrentId]
 
 	mov, err := l.getOrCreateMovie(ctx, mediaID)
 	if err != nil {
@@ -239,7 +245,7 @@ func (l LibraryService) DownloadTorrent(ctx context.Context, request *rms_librar
 	}
 	defer l.removeMovieIfEmpty(ctx, mediaID)
 
-	return l.downloadMovie(ctx, mov, request.TorrentId, false)
+	return l.downloadMovie(ctx, mov, torrent, false)
 }
 
 func (l LibraryService) FindTorrents(ctx context.Context, request *rms_library.FindTorrentsRequest, response *rms_library.FindTorrentsResponse) error {
@@ -279,23 +285,8 @@ func (l LibraryService) searchAndDownloadMovieAtOnce(ctx context.Context, mov *m
 		return
 	}
 
-	sortTorrentMoviesByQuality(results)
-
-	quality := results[0].Quality
-	idx := len(results)
-
-	// вычленяем раздачи только с указанным качеством
-	for i, r := range results {
-		if r.Quality != quality {
-			idx = i
-			break
-		}
-	}
-
-	results = results[0:idx]
-	sortTorrentMoviesBySeasons(results)
-
-	if err = l.downloadMovie(ctx, mov, *selectSuitableTorrent(results).Link, false); err != nil {
+	torrent := l.getMovieSelector(mov).Select(selector.CriteriaCompact, results)
+	if err = l.downloadMovie(ctx, mov, torrent, false); err != nil {
 		return
 	}
 

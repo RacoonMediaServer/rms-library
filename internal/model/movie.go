@@ -36,6 +36,9 @@ type Movie struct {
 
 	// Seasons contain all info about downloaded seasons of TV series
 	Seasons map[uint]*Season
+
+	// Voice contains downloaded voice for series seasons
+	Voice string
 }
 
 func (m *Movie) IsSeasonDownloaded(no uint) bool {
@@ -102,6 +105,12 @@ func (m *Movie) FindSeasonByTorrentID(torrentID string) (uint, bool) {
 		}
 	}
 	return 0, false
+}
+
+func (m *Movie) SetVoice(voice string) {
+	if m.Voice == "" {
+		m.Voice = voice
+	}
 }
 
 func (m *Movie) RemoveSeason(no uint) {
