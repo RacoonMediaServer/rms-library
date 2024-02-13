@@ -319,3 +319,24 @@ func (l LibraryService) removeMovieIfEmpty(ctx context.Context, id string) {
 		}
 	}
 }
+
+func (l LibraryService) UploadMovie(ctx context.Context, request *rms_library.UploadMovieRequest, empty *emptypb.Empty) error {
+	mov := model.Movie{
+		ID:   request.Id,
+		Info: *request.Info,
+	}
+
+	err := l.db.GetOrCreateMovie(ctx, &mov)
+	if err != nil {
+		logger.Errorf("Store movie info failed: %s", err)
+		return err
+	}
+	defer l.removeMovieIfEmpty(ctx, request.Id)
+
+	if err = l.dm.DownloadMovie(ctx, &mov, "", request.TorrentFile, false); err != nil {
+		logger.Errorf("Start download given file failed: %s", err)
+		return err
+	}
+
+	return nil
+}
