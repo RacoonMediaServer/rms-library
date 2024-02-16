@@ -153,7 +153,7 @@ func (m *Manager) DownloadMovie(ctx context.Context, mov *model.Movie, voice str
 	oldTorrents := mov.AddOrReplaceSeasons(resp.Id, seasons)
 
 	// помечаем прошлый торрент на удаление если происходит замена раздачи фильма
-	if mov.Info.Type == rms_library.MovieType_Film && mov.TorrentID != "" {
+	if mov.Info.Type != rms_library.MovieType_TvSeries && mov.TorrentID != "" {
 		torrentsToDelete = append(torrentsToDelete, mov.TorrentID)
 		mov.ReplaceTorrentID(resp.Id)
 	}

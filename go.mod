@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/RacoonMediaServer/rms-media-discovery v1.4.0
-	github.com/RacoonMediaServer/rms-packages v1.11.6
+	github.com/RacoonMediaServer/rms-packages v1.11.8
 	github.com/go-openapi/runtime v0.25.0
 	github.com/go-openapi/strfmt v0.21.3
 	github.com/stretchr/testify v1.8.4

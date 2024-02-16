@@ -47,7 +47,7 @@ func (m *Movie) IsSeasonDownloaded(no uint) bool {
 }
 
 func (m *Movie) AddFile(torrentID string, f File, season uint) {
-	if m.Info.Type == rms_library.MovieType_Film || season == 0 {
+	if m.Info.Type != rms_library.MovieType_TvSeries || season == 0 {
 		m.TorrentID = torrentID
 		m.Files = append(m.Files, f)
 		return

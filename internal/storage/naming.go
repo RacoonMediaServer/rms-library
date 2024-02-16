@@ -10,6 +10,7 @@ import (
 const (
 	nameFilms    = "Фильмы"
 	nameTvSeries = "Сериалы"
+	nameClips    = "Ролики"
 	nameByGenre  = "Жанры"
 	nameByAlpha  = "Алфавит"
 	nameByYear   = "Год"
@@ -19,7 +20,8 @@ func composeMovieFileName(mov *model.Movie, f *model.File) string {
 	_, fileName := path.Split(f.Path)
 	ext := path.Ext(f.Path)
 
-	if mov.Info.Type == rms_library.MovieType_Film {
+	switch mov.Info.Type {
+	case rms_library.MovieType_Film:
 		if len(mov.Files) == 1 {
 			return fmt.Sprintf("%s%s", mov.Info.Title, ext)
 		}
@@ -27,18 +29,22 @@ func composeMovieFileName(mov *model.Movie, f *model.File) string {
 			return fileName
 		}
 		return escape(f.Title) + ext
+	case rms_library.MovieType_TvSeries:
+		if f.No < 0 {
+			if f.Title == "" {
+				return fileName
+			}
+			return f.Title + ext
+		}
+		if f.Title == "" {
+			return fmt.Sprintf("E%02d%s", f.No, ext)
+		}
+		return fmt.Sprintf("E%02d. %s", f.No, fileName)
+	case rms_library.MovieType_Clip:
+		return f.Path
 	}
 
-	if f.No < 0 {
-		if f.Title == "" {
-			return fileName
-		}
-		return f.Title + ext
-	}
-	if f.Title == "" {
-		return fmt.Sprintf("E%02d%s", f.No, ext)
-	}
-	return fmt.Sprintf("E%02d. %s", f.No, fileName)
+	return ""
 }
 
 func getMovieCategoryDir(mov *model.Movie) string {
@@ -47,6 +53,9 @@ func getMovieCategoryDir(mov *model.Movie) string {
 		return nameTvSeries
 	case rms_library.MovieType_Film:
 		return nameFilms
+	case rms_library.MovieType_Clip:
+		return nameClips
+
 	default:
 		return ""
 	}

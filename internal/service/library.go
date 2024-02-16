@@ -14,7 +14,7 @@ func (l LibraryService) convertMovie(mov *model.Movie) *rms_library.Movie {
 		Id:   mov.ID,
 		Info: &mov.Info,
 	}
-	if mov.Info.Type == rms_library.MovieType_Film {
+	if mov.Info.Type != rms_library.MovieType_TvSeries {
 		res.Film = &rms_library.FilmLayout{
 			TorrentID: mov.TorrentID,
 		}
