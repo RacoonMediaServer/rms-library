@@ -11,6 +11,8 @@ import (
 	"unicode/utf8"
 )
 
+const fixedTorrentDir = "data"
+
 func getMovieDirectories(mov *model.Movie) (directories []string) {
 	title := escape(mov.Info.Title)
 
@@ -32,10 +34,18 @@ func getMovieDirectories(mov *model.Movie) (directories []string) {
 	return
 }
 
+func (m *Manager) getFullFilePath(torrentID, shortPath string) string {
+	if m.fixTorrentPath {
+		return path.Join(m.TorrentsDirectory(), fixedTorrentDir, shortPath)
+	} else {
+		return path.Join(m.TorrentsDirectory(), torrentID, shortPath)
+	}
+}
+
 func (m *Manager) createFilmLinks(mov *model.Movie, dir string) {
 	for _, f := range mov.Files {
 		if f.Type != model.FileTypeInsignificant {
-			oldName := path.Join(m.TorrentsDirectory(), mov.TorrentID, f.Path)
+			oldName := m.getFullFilePath(mov.TorrentID, f.Path)
 			newName := path.Join(dir, composeMovieFileName(mov, &f))
 			if err := os.Symlink(oldName, newName); err != nil {
 				logger.Warnf("Create link failed: %s", err)
@@ -46,7 +56,7 @@ func (m *Manager) createFilmLinks(mov *model.Movie, dir string) {
 
 func (m *Manager) createClipLinks(mov *model.Movie, dir string) {
 	for _, f := range mov.Files {
-		oldName := path.Join(m.TorrentsDirectory(), mov.TorrentID, f.Path)
+		oldName := m.getFullFilePath(mov.TorrentID, f.Path)
 		newName := path.Join(dir, f.Path)
 		_ = os.MkdirAll(path.Dir(newName), mediaPerms)
 		if err := os.Symlink(oldName, newName); err != nil {
@@ -60,7 +70,7 @@ func (m *Manager) createSeasonLinks(mov *model.Movie, dir string, no uint, s *mo
 		if e.Type == model.FileTypeInsignificant {
 			continue
 		}
-		oldName := path.Join(m.TorrentsDirectory(), s.TorrentID, e.Path)
+		oldName := m.getFullFilePath(s.TorrentID, e.Path)
 		newName := path.Join(dir, composeMovieFileName(mov, &e))
 		if _, err := os.Stat(oldName); err != nil {
 			continue

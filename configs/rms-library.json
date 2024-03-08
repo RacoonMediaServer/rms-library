@@ -2,6 +2,7 @@
   "database": "mongodb://localhost:27017/library",
   "directory": "/media/library",
   "device": "",
+  "fix-torrent-path": false,
   "remote": {
     "scheme": "http",
     "host": "127.0.0.1",

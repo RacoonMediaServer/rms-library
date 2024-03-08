@@ -23,6 +23,9 @@ type Configuration struct {
 
 	// Remote is settings to connect to the Remote Server
 	Remote Remote
+
+	// FixTorrentPath means use 'data' instead of torrent ID in the path of content
+	FixTorrentPath bool `json:"fix-torrent-path"`
 }
 
 var config Configuration

@@ -12,13 +12,14 @@ const maxFsCommands = 50
 
 // Manager is responsible for management content on a disk
 type Manager struct {
-	base string
-	cmd  chan func()
+	base           string
+	cmd            chan func()
+	fixTorrentPath bool
 }
 
 // NewManager creates Manager and base directory layout
-func NewManager(baseDirectory string) (*Manager, error) {
-	m := &Manager{base: baseDirectory}
+func NewManager(baseDirectory string, fixTorrentPath bool) (*Manager, error) {
+	m := &Manager{base: baseDirectory, fixTorrentPath: fixTorrentPath}
 
 	if err := os.MkdirAll(m.TorrentsDirectory(), 0777); err != nil {
 		return nil, fmt.Errorf("create torrents directory failed: %w", err)
