@@ -24,6 +24,7 @@ type Manager struct {
 	db               Database
 	torrentToContent map[string]*content
 	contentToTorrent map[string][]string
+	waitTorrentReady bool
 }
 
 type content struct {
@@ -33,13 +34,14 @@ type content struct {
 }
 
 // NewManager creates a Manager instance
-func NewManager(cli rms_torrent.RmsTorrentService, db Database, dm DirectoryManager) *Manager {
+func NewManager(cli rms_torrent.RmsTorrentService, db Database, dm DirectoryManager, waitTorrentReady bool) *Manager {
 	return &Manager{
 		cli:              cli,
 		db:               db,
 		dm:               dm,
 		torrentToContent: map[string]*content{},
 		contentToTorrent: map[string][]string{},
+		waitTorrentReady: waitTorrentReady,
 	}
 }
 
@@ -176,6 +178,10 @@ func (m *Manager) DownloadMovie(ctx context.Context, mov *model.Movie, voice str
 		return fmt.Errorf("update movie content failed: %s", err)
 	}
 
+	if !m.waitTorrentReady {
+		defer m.dm.CreateMovieLayout(mov)
+	}
+
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -242,8 +248,10 @@ func (m *Manager) GetMovieByTorrent(torrentID string) (string, bool) {
 func (m *Manager) HandleTorrentEvent(kind events.Notification_Kind, torrentID string, mov *model.Movie) {
 	switch kind {
 	case events.Notification_DownloadComplete:
-		logger.Infof("Movie '%s' download complete. creating layout", mov.Info.Title)
-		m.dm.CreateMovieLayout(mov)
+		if m.waitTorrentReady {
+			logger.Infof("Movie '%s' download complete. creating layout", mov.Info.Title)
+			m.dm.CreateMovieLayout(mov)
+		}
 
 	case events.Notification_TorrentRemoved:
 		logger.Infof("Torrent %s of movie '%s' removed", torrentID, mov.Info.Title)

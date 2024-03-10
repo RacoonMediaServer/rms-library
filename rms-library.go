@@ -73,7 +73,7 @@ func main() {
 	}
 
 	// создаем менеджер закачек
-	downloadManager := downloads.NewManager(f.NewTorrent(), database, dirManager)
+	downloadManager := downloads.NewManager(f.NewTorrent(), database, dirManager, cfg.WaitTorrentReady)
 	if err = downloadManager.Initialize(); err != nil {
 		logger.Fatalf("Cannot initialize downloads manager: %s", err)
 	}

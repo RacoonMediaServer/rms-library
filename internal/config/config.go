@@ -26,6 +26,9 @@ type Configuration struct {
 
 	// FixTorrentPath means use 'data' instead of torrent ID in the path of content
 	FixTorrentPath bool `json:"fix-torrent-path"`
+
+	// WaitTorrentReady means add data to directory only when torrent is downloaded
+	WaitTorrentReady bool `json:"wait-torrent-ready"`
 }
 
 var config Configuration

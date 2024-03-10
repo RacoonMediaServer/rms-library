@@ -3,6 +3,7 @@
   "directory": "/media/library",
   "device": "",
   "fix-torrent-path": false,
+  "wait-torrent-ready": true,
   "remote": {
     "scheme": "http",
     "host": "127.0.0.1",
