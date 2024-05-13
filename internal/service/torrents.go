@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/RacoonMediaServer/rms-library/internal/model"
-	"github.com/RacoonMediaServer/rms-library/internal/selector"
+	"github.com/RacoonMediaServer/rms-library/pkg/selector"
 	"github.com/RacoonMediaServer/rms-media-discovery/pkg/client/client/torrents"
 	"github.com/RacoonMediaServer/rms-media-discovery/pkg/client/models"
 	rms_library "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-library"

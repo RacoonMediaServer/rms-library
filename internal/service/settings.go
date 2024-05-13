@@ -2,7 +2,7 @@ package service
 
 import (
 	"github.com/RacoonMediaServer/rms-library/internal/model"
-	"github.com/RacoonMediaServer/rms-library/internal/selector"
+	"github.com/RacoonMediaServer/rms-library/pkg/selector"
 )
 
 func (l LibraryService) getMovieSelector(mov *model.Movie) selector.MovieSelector {
