@@ -1,6 +1,8 @@
 package service
 
 import (
+	"time"
+
 	"github.com/RacoonMediaServer/rms-library/internal/config"
 	"github.com/RacoonMediaServer/rms-media-discovery/pkg/client/client"
 	"github.com/RacoonMediaServer/rms-media-discovery/pkg/client/models"
@@ -9,6 +11,11 @@ import (
 	httptransport "github.com/go-openapi/runtime/client"
 	"github.com/go-openapi/strfmt"
 )
+
+func init() {
+	// this is a trick for increase timeouts for all clients to OpenAPI
+	httptransport.DefaultTimeout = 120 * time.Second
+}
 
 const searchTorrentsLimit uint = 10
 
