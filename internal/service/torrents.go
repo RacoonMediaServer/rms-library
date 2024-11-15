@@ -47,7 +47,7 @@ func (l LibraryService) searchMovieTorrents(ctx context.Context, mov *rms_librar
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
-		case <-time.After(time.Duration(sess.Payload.PollIntervalMs)):
+		case <-time.After(time.Duration(sess.Payload.PollIntervalMs) * time.Millisecond):
 		}
 		resp, err := l.cli.Torrents.SearchTorrentsAsyncStatus(&torrents.SearchTorrentsAsyncStatusParams{ID: sess.Payload.ID}, l.auth)
 		if err != nil {
