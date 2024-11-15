@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+
 	"github.com/RacoonMediaServer/rms-media-discovery/pkg/client/client/movies"
 	"github.com/RacoonMediaServer/rms-media-discovery/pkg/client/models"
 	rms_library "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-library"

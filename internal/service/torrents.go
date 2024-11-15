@@ -5,6 +5,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
+	"time"
+
 	"github.com/RacoonMediaServer/rms-library/internal/model"
 	"github.com/RacoonMediaServer/rms-library/pkg/selector"
 	"github.com/RacoonMediaServer/rms-media-discovery/pkg/client/client/torrents"
@@ -12,40 +15,53 @@ import (
 	rms_library "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-library"
 	"go-micro.dev/v4/logger"
 	"google.golang.org/protobuf/types/known/emptypb"
-	"sort"
 )
 
 var errAnyTorrentsNotFound = errors.New("any torrents not found")
 
 func (l LibraryService) searchMovieTorrents(ctx context.Context, mov *rms_library.MovieInfo, season *uint32, limit uint) ([]*models.SearchTorrentsResult, error) {
-	limitInt := int64(limit)
-	torrentType := "movies"
 	strong := true
-	q := &torrents.SearchTorrentsParams{
-		Limit:   &limitInt,
-		Q:       mov.Title,
-		Season:  nil,
-		Type:    &torrentType,
-		Year:    nil,
-		Context: ctx,
-		Strong:  &strong,
+	q := torrents.SearchTorrentsAsyncBody{
+		Limit:  int64(limit),
+		Q:      &mov.Title,
+		Type:   "movies",
+		Strong: &strong,
 	}
 
 	if mov.Type == rms_library.MovieType_TvSeries && season != nil {
 		s := int64(*season)
-		q.Season = &s
+		q.Season = s
 	}
 
 	if mov.Type == rms_library.MovieType_Film && mov.Year != 0 {
-		year := int64(mov.Year)
-		q.Year = &year
+		q.Year = int64(mov.Year)
 	}
 
-	resp, err := l.cli.Torrents.SearchTorrents(q, l.auth)
+	sess, err := l.cli.Torrents.SearchTorrentsAsync(&torrents.SearchTorrentsAsyncParams{SearchParameters: q, Context: ctx}, l.auth)
 	if err != nil {
 		return nil, err
 	}
-	return resp.Payload.Results, nil
+	defer l.cli.Torrents.SearchTorrentsAsyncCancel(&torrents.SearchTorrentsAsyncCancelParams{ID: sess.Payload.ID}, l.auth)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(time.Duration(sess.Payload.PollIntervalMs)):
+		}
+		resp, err := l.cli.Torrents.SearchTorrentsAsyncStatus(&torrents.SearchTorrentsAsyncStatusParams{ID: sess.Payload.ID}, l.auth)
+		if err != nil {
+			return nil, err
+		}
+		switch *resp.Payload.Status {
+		case "ready":
+			return resp.Payload.Results, nil
+		case "error":
+			return nil, errors.New(resp.Payload.Error)
+		default:
+			continue
+		}
+	}
 }
 
 func (l LibraryService) getOrCreateMovie(ctx context.Context, id string) (*model.Movie, error) {
