@@ -44,25 +44,30 @@ func (m *Manager) getFullFilePath(torrentID, shortPath string) string {
 }
 
 func (m *Manager) createFilmLinks(mov *model.Movie, dir string) {
-	if m.dirs.SaveOriginalLayout {
-		m.createClipLinks(mov, dir)
-		return
-	}
-
 	for _, f := range mov.Files {
 		if f.Type != model.FileTypeInsignificant {
 			oldName := m.getFullFilePath(mov.TorrentID, f.Path)
 			newName := path.Join(dir, composeMovieFileName(mov, &f))
+			_ = os.MkdirAll(path.Dir(newName), mediaPerms)
 			if err := os.Symlink(oldName, newName); err != nil {
 				logger.Warnf("Create link failed: %s", err)
 			}
 		}
 	}
+
+	if m.dirs.SaveOriginalLayout {
+		dir = path.Join(dir, "_Torrent")
+		m.createClipLinks(mov, dir)
+	}
 }
 
 func (m *Manager) createClipLinks(mov *model.Movie, dir string) {
-	for _, f := range mov.Files {
-		oldName := m.getFullFilePath(mov.TorrentID, f.Path)
+	m.createRawLinks(mov.TorrentID, mov.Files, dir)
+}
+
+func (m *Manager) createRawLinks(torrent string, files []model.File, dir string) {
+	for _, f := range files {
+		oldName := m.getFullFilePath(torrent, f.Path)
 		newName := path.Join(dir, f.Path)
 		_ = os.MkdirAll(path.Dir(newName), mediaPerms)
 		if err := os.Symlink(oldName, newName); err != nil {
@@ -73,17 +78,14 @@ func (m *Manager) createClipLinks(mov *model.Movie, dir string) {
 
 func (m *Manager) createSeasonLinks(mov *model.Movie, dir string, no uint, s *model.Season) {
 	for _, e := range s.Episodes {
-		oldName := m.getFullFilePath(s.TorrentID, e.Path)
-		newName := path.Join(dir, e.Path)
-
-		if !m.dirs.SaveOriginalLayout {
-			if e.Type == model.FileTypeInsignificant {
-				continue
-			}
-			newName = path.Join(dir, composeMovieFileName(mov, &e))
-		} else {
-			_ = os.MkdirAll(path.Dir(newName), mediaPerms)
+		if e.Type == model.FileTypeInsignificant {
+			continue
 		}
+
+		oldName := m.getFullFilePath(s.TorrentID, e.Path)
+		newName := path.Join(dir, composeMovieFileName(mov, &e))
+
+		_ = os.MkdirAll(path.Dir(newName), mediaPerms)
 
 		if _, err := os.Stat(oldName); err != nil {
 			continue
@@ -96,19 +98,13 @@ func (m *Manager) createSeasonLinks(mov *model.Movie, dir string, no uint, s *mo
 
 // GetMovieFilePath returns relative tv-series or movie file path
 func (m *Manager) GetMovieFilePath(mov *model.Movie, season uint, f *model.File) string {
-	handler := composeMovieFileName
-	if m.dirs.SaveOriginalLayout {
-		handler = func(mov *model.Movie, f *model.File) string {
-			return f.Path
-		}
-	}
 	switch mov.Info.Type {
 	case rms_library.MovieType_Film:
-		return path.Join(getMovieCategoryDir(mov), mov.Info.Title, handler(mov, f))
+		return path.Join(getMovieCategoryDir(mov), mov.Info.Title, composeMovieFileName(mov, f))
 	case rms_library.MovieType_TvSeries:
-		return path.Join(getMovieCategoryDir(mov), mov.Info.Title, fmt.Sprintf("Сезон %d", season), handler(mov, f))
+		return path.Join(getMovieCategoryDir(mov), mov.Info.Title, fmt.Sprintf("Сезон %d", season), composeMovieFileName(mov, f))
 	case rms_library.MovieType_Clip:
-		return path.Join(getMovieCategoryDir(mov), mov.Info.Title, handler(mov, f))
+		return path.Join(getMovieCategoryDir(mov), mov.Info.Title, composeMovieFileName(mov, f))
 	}
 	return ""
 }
@@ -151,12 +147,26 @@ func (m *Manager) CreateMovieLayout(mov *model.Movie) {
 					}
 					m.createSeasonLinks(mov, dir, no, season)
 				}
+				if m.dirs.SaveOriginalLayout {
+					m.createOriginalLinks(mov, dir)
+				}
 			case rms_library.MovieType_Film:
 				m.createFilmLinks(mov, dir)
 			case rms_library.MovieType_Clip:
 				m.createClipLinks(mov, dir)
 			}
 		}
+	}
+}
+
+func (m *Manager) createOriginalLinks(mov *model.Movie, dir string) {
+	dir = path.Join(dir, "_Torrent")
+	if mov.TorrentID != "" {
+		m.createRawLinks(mov.TorrentID, mov.Files, path.Join(dir, mov.TorrentID))
+	}
+
+	for _, s := range mov.Seasons {
+		m.createRawLinks(s.TorrentID, s.Episodes, path.Join(dir, s.TorrentID))
 	}
 }
 
