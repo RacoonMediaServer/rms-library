@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+
 	"github.com/RacoonMediaServer/rms-library/internal/config"
 	"github.com/RacoonMediaServer/rms-library/internal/db"
 	"github.com/RacoonMediaServer/rms-library/internal/downloads"
@@ -67,7 +68,7 @@ func main() {
 	f := servicemgr.NewServiceFactory(service)
 
 	// создаем структуру директорий
-	dirManager, err := storage.NewManager(cfg.Directory, cfg.FixTorrentPath)
+	dirManager, err := storage.NewManager(cfg.Directories)
 	if err != nil {
 		logger.Fatalf("Cannot initialize directory manager: %s", err)
 	}

@@ -2,16 +2,16 @@ package storage
 
 import (
 	"fmt"
+	"os"
+	"path"
+	"strings"
+	"unicode"
+	"unicode/utf8"
+
 	"github.com/RacoonMediaServer/rms-library/internal/model"
 	rms_library "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-library"
 	"go-micro.dev/v4/logger"
-	"os"
-	"path"
-	"unicode"
-	"unicode/utf8"
 )
-
-const fixedTorrentDir = "data"
 
 func getMovieDirectories(mov *model.Movie) (directories []string) {
 	title := escape(mov.Info.Title)
@@ -35,14 +35,20 @@ func getMovieDirectories(mov *model.Movie) (directories []string) {
 }
 
 func (m *Manager) getFullFilePath(torrentID, shortPath string) string {
-	if m.fixTorrentPath {
-		return path.Join(m.TorrentsDirectory(), fixedTorrentDir, shortPath)
-	} else {
-		return path.Join(m.TorrentsDirectory(), torrentID, shortPath)
+	if m.dirs.Layout == "" {
+		return path.Join(m.dirs.Downloads, shortPath)
 	}
+
+	subDir := strings.ReplaceAll(m.dirs.Layout, "%ID", torrentID)
+	return path.Join(m.dirs.Downloads, subDir, shortPath)
 }
 
 func (m *Manager) createFilmLinks(mov *model.Movie, dir string) {
+	if m.dirs.SaveOriginalLayout {
+		m.createClipLinks(mov, dir)
+		return
+	}
+
 	for _, f := range mov.Files {
 		if f.Type != model.FileTypeInsignificant {
 			oldName := m.getFullFilePath(mov.TorrentID, f.Path)
@@ -67,11 +73,18 @@ func (m *Manager) createClipLinks(mov *model.Movie, dir string) {
 
 func (m *Manager) createSeasonLinks(mov *model.Movie, dir string, no uint, s *model.Season) {
 	for _, e := range s.Episodes {
-		if e.Type == model.FileTypeInsignificant {
-			continue
-		}
 		oldName := m.getFullFilePath(s.TorrentID, e.Path)
-		newName := path.Join(dir, composeMovieFileName(mov, &e))
+		newName := path.Join(dir, e.Path)
+
+		if !m.dirs.SaveOriginalLayout {
+			if e.Type == model.FileTypeInsignificant {
+				continue
+			}
+			newName = path.Join(dir, composeMovieFileName(mov, &e))
+		} else {
+			_ = os.MkdirAll(path.Dir(newName), mediaPerms)
+		}
+
 		if _, err := os.Stat(oldName); err != nil {
 			continue
 		}
@@ -83,24 +96,30 @@ func (m *Manager) createSeasonLinks(mov *model.Movie, dir string, no uint, s *mo
 
 // GetMovieFilePath returns relative tv-series or movie file path
 func (m *Manager) GetMovieFilePath(mov *model.Movie, season uint, f *model.File) string {
+	handler := composeMovieFileName
+	if m.dirs.SaveOriginalLayout {
+		handler = func(mov *model.Movie, f *model.File) string {
+			return f.Path
+		}
+	}
 	switch mov.Info.Type {
 	case rms_library.MovieType_Film:
-		return path.Join(getMovieCategoryDir(mov), mov.Info.Title, composeMovieFileName(mov, f))
+		return path.Join(getMovieCategoryDir(mov), mov.Info.Title, handler(mov, f))
 	case rms_library.MovieType_TvSeries:
-		return path.Join(getMovieCategoryDir(mov), mov.Info.Title, fmt.Sprintf("Сезон %d", season), composeMovieFileName(mov, f))
+		return path.Join(getMovieCategoryDir(mov), mov.Info.Title, fmt.Sprintf("Сезон %d", season), handler(mov, f))
 	case rms_library.MovieType_Clip:
-		return path.Join(getMovieCategoryDir(mov), mov.Info.Title, composeMovieFileName(mov, f))
+		return path.Join(getMovieCategoryDir(mov), mov.Info.Title, handler(mov, f))
 	}
 	return ""
 }
 
 func (m *Manager) CreateMoviesLayout(movies []*model.Movie) error {
-	dirs, err := os.ReadDir(m.MoviesDirectory())
+	dirs, err := os.ReadDir(m.dirs.Content)
 	if err != nil {
 		return err
 	}
 	for _, d := range dirs {
-		_ = os.RemoveAll(path.Join(m.MoviesDirectory(), d.Name()))
+		_ = os.RemoveAll(path.Join(m.dirs.Content, d.Name()))
 	}
 
 	for _, mov := range movies {
@@ -116,7 +135,7 @@ func (m *Manager) CreateMovieLayout(mov *model.Movie) {
 		dirs := getMovieDirectories(mov)
 
 		for _, dir := range dirs {
-			dir = path.Join(m.MoviesDirectory(), dir)
+			dir = path.Join(m.dirs.Content, dir)
 			_ = os.RemoveAll(dir)
 
 			if err := os.MkdirAll(dir, mediaPerms); err != nil {
@@ -146,7 +165,7 @@ func (m *Manager) DeleteMovieLayout(mov *model.Movie) {
 	m.cmd <- func() {
 		dirs := getMovieDirectories(mov)
 		for _, dir := range dirs {
-			dir = path.Join(m.MoviesDirectory(), dir)
+			dir = path.Join(m.dirs.Content, dir)
 			_ = os.RemoveAll(dir)
 		}
 	}

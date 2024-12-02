@@ -18,17 +18,32 @@ type Configuration struct {
 	// Device API key
 	Device string
 
-	// Directory is a base media directory
-	Directory string
+	// Directories are paths to media content
+	Directories Directories
 
 	// Remote is settings to connect to the Remote Server
 	Remote Remote
 
-	// FixTorrentPath means use 'data' instead of torrent ID in the path of content
-	FixTorrentPath bool `json:"fix-torrent-path"`
-
 	// WaitTorrentReady means add data to directory only when torrent is downloaded
 	WaitTorrentReady bool `json:"wait-torrent-ready"`
+}
+
+type Directories struct {
+	// Downloads mean path to torrents content
+	Downloads string
+
+	// Layout means how dowloads organized. Common values:
+	// "" (empty) - torrents stored as they downloaded
+	// "%ID" - torrents organized by ID subdirectories
+	// "data" - torrents organized in subfolder 'data'
+	Layout string
+
+	// Content means path to organized media
+	Content string
+
+	// Save original layout for internal torrent files
+	// if false - the library decorate files
+	SaveOriginalLayout bool `json:"save-original-layout"`
 }
 
 var config Configuration
