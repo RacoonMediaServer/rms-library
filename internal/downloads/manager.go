@@ -3,6 +3,9 @@ package downloads
 import (
 	"context"
 	"fmt"
+	"sync"
+	"time"
+
 	"github.com/RacoonMediaServer/rms-library/internal/analysis"
 	"github.com/RacoonMediaServer/rms-library/internal/model"
 	"github.com/RacoonMediaServer/rms-media-discovery/pkg/media"
@@ -11,8 +14,6 @@ import (
 	rms_torrent "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-torrent"
 	"go-micro.dev/v4/client"
 	"go-micro.dev/v4/logger"
-	"sync"
-	"time"
 )
 
 // Manager is responsible for downloading and management torrents

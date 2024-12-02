@@ -41,7 +41,7 @@ func (l LibraryService) searchMovieTorrents(ctx context.Context, mov *rms_librar
 	if err != nil {
 		return nil, err
 	}
-	defer l.cli.Torrents.SearchTorrentsAsyncCancel(&torrents.SearchTorrentsAsyncCancelParams{ID: sess.Payload.ID}, l.auth)
+	defer l.cli.Torrents.SearchTorrentsAsyncCancel(&torrents.SearchTorrentsAsyncCancelParams{ID: sess.Payload.ID, Context: ctx}, l.auth)
 
 	for {
 		select {
@@ -49,7 +49,7 @@ func (l LibraryService) searchMovieTorrents(ctx context.Context, mov *rms_librar
 			return nil, ctx.Err()
 		case <-time.After(time.Duration(sess.Payload.PollIntervalMs) * time.Millisecond):
 		}
-		resp, err := l.cli.Torrents.SearchTorrentsAsyncStatus(&torrents.SearchTorrentsAsyncStatusParams{ID: sess.Payload.ID}, l.auth)
+		resp, err := l.cli.Torrents.SearchTorrentsAsyncStatus(&torrents.SearchTorrentsAsyncStatusParams{ID: sess.Payload.ID, Context: ctx}, l.auth)
 		if err != nil {
 			return nil, err
 		}
