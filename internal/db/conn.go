@@ -3,16 +3,18 @@ package db
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"time"
 )
 
 type Database struct {
-	cli   *mongo.Client
-	db    *mongo.Database
-	mov   *mongo.Collection
-	cache *mongo.Collection
+	cli       *mongo.Client
+	db        *mongo.Database
+	mov       *mongo.Collection
+	cache     *mongo.Collection
+	watchlist *mongo.Collection
 }
 
 const databaseTimeout = 40 * time.Second
@@ -34,10 +36,11 @@ func Connect(uri string) (*Database, error) {
 	lib := cli.Database("library")
 
 	db := &Database{
-		cli:   cli,
-		db:    lib,
-		mov:   lib.Collection("movies"),
-		cache: lib.Collection("cache"),
+		cli:       cli,
+		db:        lib,
+		mov:       lib.Collection("movies"),
+		cache:     lib.Collection("cache"),
+		watchlist: lib.Collection("watchlist"),
 	}
 
 	return db, nil

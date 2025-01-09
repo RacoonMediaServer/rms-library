@@ -1,0 +1,82 @@
+package service
+
+import (
+	"context"
+	"errors"
+	"fmt"
+
+	"github.com/RacoonMediaServer/rms-library/internal/model"
+	"github.com/RacoonMediaServer/rms-media-discovery/pkg/client/models"
+	"github.com/RacoonMediaServer/rms-media-discovery/pkg/media"
+	rms_library "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-library"
+	"go-micro.dev/v4/logger"
+	"google.golang.org/protobuf/types/known/emptypb"
+)
+
+func (l LibraryService) fetchTorrentFiles(ctx context.Context, results []*models.SearchTorrentsResult) []model.TorrentItem {
+	items := make([]model.TorrentItem, 0, len(results))
+	for _, r := range results {
+		content, err := l.downloadTorrent(ctx, *r.Link)
+		if err != nil {
+			logger.Warnf("Download torrent failed: %s", err)
+			continue
+		}
+		item := model.TorrentItem{
+			SearchTorrentsResult: *r,
+			TorrentContent:       content,
+		}
+		items = append(items, item)
+	}
+
+	return items
+}
+
+func (l LibraryService) WatchLater(ctx context.Context, request *rms_library.WatchLaterRequest, empty *emptypb.Empty) error {
+	logger.Infof("WatchLater: %s", request.Id)
+	mov, err := l.getOrCreateMovie(ctx, request.Id)
+	if err != nil {
+		err = fmt.Errorf("get or create movie failed: %s", err)
+		logger.Error(err)
+		return err
+	}
+
+	item := model.WatchListItem{
+		ID:        request.Id,
+		Type:      media.Movies,
+		MovieInfo: mov.Info,
+	}
+
+	result, err := l.searchMovieTorrents(ctx, &mov.Info, nil, searchTorrentsLimit)
+	if err != nil {
+		logger.Errorf("Find torrents failed: %s", err)
+		return err
+	}
+	if len(result) == 0 {
+		return errors.New("nothing found")
+	}
+
+	go func() {
+		item.Torrents = l.fetchTorrentFiles(context.Background(), result)
+
+		if mov.Info.Type == rms_library.MovieType_TvSeries && mov.Info.Seasons != nil {
+			item.Seasons = map[uint][]model.TorrentItem{}
+			for season := uint32(1); season <= *mov.Info.Seasons; season++ {
+				result, err = l.searchMovieTorrents(context.Background(), &mov.Info, &season, searchTorrentsLimit)
+				if err != nil {
+					logger.Errorf("Find torrents failed: %s", err)
+					continue
+				}
+				item.Seasons[uint(season)] = l.fetchTorrentFiles(context.Background(), result)
+			}
+		}
+
+		if err := l.db.AddToWatchList(context.Background(), &item); err != nil {
+			logger.Errorf("Save item '%s' [ %s ] to watchlist failed: %s", mov.Info.Title, mov.ID, err)
+			return
+		}
+
+		logger.Infof("Item '%s' [ %s ] saved to watchlist", mov.Info.Title, mov.ID)
+	}()
+
+	return nil
+}

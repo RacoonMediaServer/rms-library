@@ -4,13 +4,14 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"os"
+	"strconv"
+	"time"
+
 	rms_library "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-library"
 	"github.com/urfave/cli/v2"
 	"go-micro.dev/v4"
 	"go-micro.dev/v4/client"
-	"os"
-	"strconv"
-	"time"
 )
 
 const defaultTimeout = 60 * time.Second
@@ -53,10 +54,14 @@ func main() {
 		panic(err)
 	}
 
-	resp, err := library.DownloadMovie(context.Background(), &rms_library.DownloadMovieRequest{Id: results.Movies[no-1].Id}, client.WithRequestTimeout(defaultTimeout))
+	// resp, err := library.DownloadMovie(context.Background(), &rms_library.DownloadMovieRequest{Id: results.Movies[no-1].Id}, client.WithRequestTimeout(defaultTimeout))
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// fmt.Println("Found: ", resp.Found)
+	// fmt.Println("Seasons: ", resp.Seasons)
+	_, err = library.WatchLater(context.Background(), &rms_library.WatchLaterRequest{Id: results.Movies[no-1].Id}, client.WithRequestTimeout(defaultTimeout))
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("Found: ", resp.Found)
-	fmt.Println("Seasons: ", resp.Seasons)
 }

@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/RacoonMediaServer/rms-media-discovery v1.7.4
-	github.com/RacoonMediaServer/rms-packages v1.14.4
+	github.com/RacoonMediaServer/rms-packages v1.15.3
 	github.com/antzucaro/matchr v0.0.0-20221106193745-7bed6ef61ef9
 	github.com/go-micro/plugins/v4/registry/etcd v1.2.0
 	github.com/go-openapi/runtime v0.25.0

@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+
 	"github.com/RacoonMediaServer/rms-library/internal/model"
 	"github.com/RacoonMediaServer/rms-packages/pkg/events"
 	rms_library "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-library"
@@ -18,6 +19,8 @@ type Database interface {
 
 	PutMovieInfo(ctx context.Context, id string, mov *rms_library.MovieInfo) error
 	GetMovieInfo(ctx context.Context, id string) (*rms_library.MovieInfo, error)
+
+	AddToWatchList(ctx context.Context, item *model.WatchListItem) error
 }
 
 type DirectoryManager interface {
