@@ -3,15 +3,16 @@
   "device": "",
   "wait-torrent-ready": true,
   "remote": {
-    "scheme": "http",
-    "host": "127.0.0.1",
-    "port": 8081,
+    "scheme": "https",
+    "host": "api.racoondev.top",
+    "port": 443,
     "path": "/media"
   },
   "directories": {
     "downloads": "/media/library/torrents",
     "layout": "%ID",
     "content": "/media/library/movies",
-    "save-original-layout": true
+    "save-original-layout": true,
+    "watch-list": "/media/library/watchlist"
   }
 }

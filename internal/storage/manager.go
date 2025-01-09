@@ -28,6 +28,9 @@ func NewManager(dirs config.Directories) (*Manager, error) {
 	if err := os.MkdirAll(dirs.Content, mediaPerms); err != nil {
 		return nil, fmt.Errorf("create content directory failed: %w", err)
 	}
+	if err := os.MkdirAll(dirs.WatchList, mediaPerms); err != nil {
+		return nil, fmt.Errorf("create watchlist directory failed: %w", err)
+	}
 	m.cmd = make(chan func(), maxFsCommands)
 	go func() {
 		for cmd := range m.cmd {

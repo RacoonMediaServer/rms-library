@@ -8,7 +8,7 @@ import (
 
 type TorrentItem struct {
 	models.SearchTorrentsResult
-	TorrentContent []byte
+	TorrentContent string
 }
 
 type WatchListItem struct {

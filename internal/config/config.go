@@ -44,6 +44,9 @@ type Directories struct {
 	// Save original layout for internal torrent files
 	// if false - the library decorate files
 	SaveOriginalLayout bool `json:"save-original-layout"`
+
+	// Path to directory for store watch-list torrent files
+	WatchList string `json:"watch-list"`
 }
 
 var config Configuration

@@ -25,6 +25,7 @@ type Database interface {
 
 type DirectoryManager interface {
 	GetMovieFilePath(mov *model.Movie, season uint, f *model.File) string
+	StoreWatchListTorrent(itemTitle string, torrent []byte) (id string, err error)
 }
 
 type DownloadsManager interface {

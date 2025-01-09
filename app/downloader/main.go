@@ -14,7 +14,7 @@ import (
 	"go-micro.dev/v4/client"
 )
 
-const defaultTimeout = 60 * time.Second
+const defaultTimeout = 2 * time.Minute
 
 func main() {
 	var query string
