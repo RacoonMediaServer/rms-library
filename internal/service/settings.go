@@ -5,9 +5,10 @@ import (
 	"github.com/RacoonMediaServer/rms-library/pkg/selector"
 )
 
-func (l LibraryService) getMovieSelector(mov *model.Movie) selector.MovieSelector {
+func (l LibraryService) getMovieSelector(mov *model.Movie) selector.MediaSelector {
 	// TODO: вынести в настройки
-	sel := selector.MovieSelector{
+
+	settings := selector.Settings{
 		MinSeasonSizeMB:     1024,
 		MaxSeasonSizeMB:     50 * 1024,
 		MinSeedersThreshold: 50,
@@ -15,12 +16,12 @@ func (l LibraryService) getMovieSelector(mov *model.Movie) selector.MovieSelecto
 		Voice:               mov.Voice,
 	}
 
-	sel.VoiceList.Append("сыендук", "syenduk")
-	sel.VoiceList.Append("кубик", "кубе", "kubik", "kube")
-	sel.VoiceList.Append("кураж", "бомбей", "kurazh", "bombej")
-	sel.VoiceList.Append("lostfilm", "lost")
-	sel.VoiceList.Append("newstudio")
-	sel.VoiceList.Append("амедиа", "amedia")
+	settings.VoiceList.Append("сыендук", "syenduk")
+	settings.VoiceList.Append("кубик", "кубе", "kubik", "kube")
+	settings.VoiceList.Append("кураж", "бомбей", "kurazh", "bombej")
+	settings.VoiceList.Append("lostfilm", "lost")
+	settings.VoiceList.Append("newstudio")
+	settings.VoiceList.Append("амедиа", "amedia")
 
-	return sel
+	return selector.New(settings)
 }

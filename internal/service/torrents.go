@@ -12,6 +12,7 @@ import (
 	"github.com/RacoonMediaServer/rms-library/pkg/selector"
 	"github.com/RacoonMediaServer/rms-media-discovery/pkg/client/client/torrents"
 	"github.com/RacoonMediaServer/rms-media-discovery/pkg/client/models"
+	"github.com/RacoonMediaServer/rms-media-discovery/pkg/media"
 	rms_library "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-library"
 	"go-micro.dev/v4/logger"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -99,11 +100,16 @@ func (l LibraryService) searchAndDownloadMovie(ctx context.Context, mov *model.M
 	var torrent *models.SearchTorrentsResult
 
 	sel := l.getMovieSelector(mov)
-	if faster {
-		torrent = sel.Select(selector.CriteriaFastest, list)
-	} else {
-		torrent = sel.Select(selector.CriteriaQuality, list)
+	opts := selector.Options{
+		Criteria:  selector.CriteriaQuality,
+		MediaType: media.Movies,
+		Query:     mov.Info.Title,
 	}
+	if faster {
+		opts.Criteria = selector.CriteriaFastest
+	}
+
+	torrent = sel.Select(list, opts)
 
 	return l.downloadMovie(ctx, mov, torrent, faster)
 }
@@ -301,7 +307,13 @@ func (l LibraryService) searchAndDownloadMovieAtOnce(ctx context.Context, mov *m
 		return
 	}
 
-	torrent := l.getMovieSelector(mov).Select(selector.CriteriaCompact, results)
+	sel := l.getMovieSelector(mov)
+	opts := selector.Options{
+		Criteria:  selector.CriteriaCompact,
+		MediaType: media.Movies,
+		Query:     mov.Info.Title,
+	}
+	torrent := sel.Select(results, opts)
 	if err = l.downloadMovie(ctx, mov, torrent, false); err != nil {
 		return
 	}

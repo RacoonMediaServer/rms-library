@@ -1,10 +1,12 @@
 package selector
 
 import (
-	"github.com/RacoonMediaServer/rms-media-discovery/pkg/client/models"
-	"github.com/stretchr/testify/assert"
-	"go-micro.dev/v4/logger"
 	"testing"
+
+	"github.com/RacoonMediaServer/rms-media-discovery/pkg/client/models"
+	"github.com/RacoonMediaServer/rms-media-discovery/pkg/media"
+	"github.com/apex/log"
+	"github.com/stretchr/testify/assert"
 )
 
 type testCase struct {
@@ -129,8 +131,8 @@ var testCases = []testCase{
 	},
 }
 
-func TestMovieSelector_Select(t *testing.T) {
-	s := MovieSelector{
+func TestMediaSelector_Select(t *testing.T) {
+	s := Settings{
 		MinSeasonSizeMB:     1024,
 		MaxSeasonSizeMB:     1024 * 50,
 		MinSeedersThreshold: 50,
@@ -143,13 +145,19 @@ func TestMovieSelector_Select(t *testing.T) {
 	}
 
 	s.VoiceList.Append("сыендук")
+	sel := New(s)
 
-	_ = logger.Init(logger.WithLevel(logger.TraceLevel))
+	log.SetLevel(log.DebugLevel)
 
 	for i, test := range testCases {
-		logger.Tracef("\n\n############### Test %d ###############", i)
+		log.Debugf("\n\n############### Test %d ###############", i)
 		s.Voice = test.voice
-		result := s.Select(test.criteria, test.list)
+		opts := Options{
+			Log:       log.WithField("from", "selector"),
+			Criteria:  test.criteria,
+			MediaType: media.Movies,
+		}
+		result := sel.Select(test.list, opts)
 		assert.Equal(t, test.list[test.result], result, "test case %d failed", i)
 	}
 }

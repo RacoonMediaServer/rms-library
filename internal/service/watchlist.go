@@ -6,12 +6,23 @@ import (
 	"fmt"
 
 	"github.com/RacoonMediaServer/rms-library/internal/model"
+	"github.com/RacoonMediaServer/rms-library/pkg/selector"
 	"github.com/RacoonMediaServer/rms-media-discovery/pkg/client/models"
 	"github.com/RacoonMediaServer/rms-media-discovery/pkg/media"
 	rms_library "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-library"
+	"github.com/apex/log"
 	"go-micro.dev/v4/logger"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
+
+const maxTorrentsInWatchListItem = 3
+
+func boundResults(results []*models.SearchTorrentsResult) []*models.SearchTorrentsResult {
+	if len(results) > maxTorrentsInWatchListItem {
+		return results[:maxTorrentsInWatchListItem]
+	}
+	return results
+}
 
 func (l LibraryService) fetchTorrentFiles(ctx context.Context, results []*models.SearchTorrentsResult) []model.TorrentItem {
 	items := make([]model.TorrentItem, 0, len(results))
@@ -45,6 +56,16 @@ func (l LibraryService) WatchLater(ctx context.Context, request *rms_library.Wat
 		Type:      media.Movies,
 		MovieInfo: mov.Info,
 	}
+	log.SetLevel(log.DebugLevel)
+	sel := l.getMovieSelector(mov)
+	opts := selector.Options{
+		Criteria:  selector.CriteriaQuality,
+		MediaType: media.Movies,
+		Query:     mov.Info.Title,
+	}
+	if mov.Info.Type == rms_library.MovieType_TvSeries {
+		opts.Criteria = selector.CriteriaCompact
+	}
 
 	result, err := l.searchMovieTorrents(ctx, &mov.Info, nil, searchTorrentsLimit)
 	if err != nil {
@@ -54,11 +75,14 @@ func (l LibraryService) WatchLater(ctx context.Context, request *rms_library.Wat
 	if len(result) == 0 {
 		return errors.New("nothing found")
 	}
+	sel.Sort(result, opts)
+	result = boundResults(result)
 
 	go func() {
 		item.Torrents = l.fetchTorrentFiles(context.Background(), result)
 
 		if mov.Info.Type == rms_library.MovieType_TvSeries && mov.Info.Seasons != nil {
+			opts.Criteria = selector.CriteriaQuality
 			item.Seasons = map[uint][]model.TorrentItem{}
 			for season := uint32(1); season <= *mov.Info.Seasons; season++ {
 				result, err = l.searchMovieTorrents(context.Background(), &mov.Info, &season, searchTorrentsLimit)
@@ -66,7 +90,10 @@ func (l LibraryService) WatchLater(ctx context.Context, request *rms_library.Wat
 					logger.Errorf("Find torrents failed: %s", err)
 					continue
 				}
+				sel.Sort(result, opts)
+				result = boundResults(result)
 				item.Seasons[uint(season)] = l.fetchTorrentFiles(context.Background(), result)
+				logger.Infof("For %s [ %s ] found season no%.d, torrents: %d", mov.Info.Title, mov.ID, season, len(result))
 			}
 		}
 
