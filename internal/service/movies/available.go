@@ -1,15 +1,16 @@
-package service
+package movies
 
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/RacoonMediaServer/rms-library/internal/model"
 	"github.com/RacoonMediaServer/rms-media-discovery/pkg/client/client/movies"
 	"github.com/RacoonMediaServer/rms-media-discovery/pkg/client/client/torrents"
 	rms_library "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-library"
 	"go-micro.dev/v4/logger"
 	"google.golang.org/protobuf/types/known/emptypb"
-	"time"
 )
 
 const checkAvailableInterval = 24 * time.Hour

@@ -6,7 +6,7 @@ import (
 	"github.com/RacoonMediaServer/rms-library/internal/config"
 	"github.com/RacoonMediaServer/rms-library/internal/db"
 	"github.com/RacoonMediaServer/rms-library/internal/downloads"
-	libraryService "github.com/RacoonMediaServer/rms-library/internal/service"
+	"github.com/RacoonMediaServer/rms-library/internal/service/movies"
 	"github.com/RacoonMediaServer/rms-library/internal/storage"
 	rms_library "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-library"
 	"github.com/RacoonMediaServer/rms-packages/pkg/service/servicemgr"
@@ -79,7 +79,7 @@ func main() {
 		logger.Fatalf("Cannot initialize downloads manager: %s", err)
 	}
 
-	settings := libraryService.Settings{
+	settings := movies.Settings{
 		ServiceFactory:   f,
 		Database:         database,
 		DirectoryManager: dirManager,
@@ -88,15 +88,15 @@ func main() {
 		Device:           cfg.Device,
 	}
 
-	lib := libraryService.NewService(settings)
+	moviesService := movies.NewService(settings)
 
 	// подписываемся на события от торрентов
-	if err = lib.Subscribe(service.Server()); err != nil {
+	if err = moviesService.Subscribe(service.Server()); err != nil {
 		logger.Fatalf("Subscribe failed: %s", err)
 	}
 
 	//регистрируем хендлеры
-	if err = rms_library.RegisterRmsLibraryHandler(service.Server(), lib); err != nil {
+	if err = rms_library.RegisterMoviesHandler(service.Server(), moviesService); err != nil {
 		logger.Fatalf("Register service failed: %s", err)
 	}
 

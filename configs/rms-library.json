@@ -1,6 +1,6 @@
 {
   "database": "mongodb://localhost:27017/library",
-  "device": "",
+  "device": "eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDgyMjM2MGQtNzJlYy00NzZkLTljNTktZWZmMzU3MDNiYzA4In0.haZzUh2mMJe13oBmKsI-470sRiaVwlyEwLflIwrtSpJlJHwvNbghz8UgMLUJX-AEjjYaH-uEs19QSEKseq6gDg",
   "wait-torrent-ready": true,
   "remote": {
     "scheme": "https",

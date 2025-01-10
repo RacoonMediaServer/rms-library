@@ -1,4 +1,4 @@
-package service
+package movies
 
 import (
 	"context"
@@ -34,7 +34,7 @@ func convertMovieInfo(in *models.SearchMoviesResult) *rms_library.MovieInfo {
 	return out
 }
 
-func (l LibraryService) SearchMovie(ctx context.Context, request *rms_library.SearchMovieRequest, response *rms_library.SearchMovieResponse) error {
+func (l LibraryService) Search(ctx context.Context, request *rms_library.SearchRequest, response *rms_library.SearchMovieResponse) error {
 	logger.Infof("SearchMovie: %s", request.Text)
 
 	limit := int64(request.Limit)

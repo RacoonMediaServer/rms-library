@@ -1,8 +1,9 @@
-package service
+package movies
 
 import (
 	"context"
 	"fmt"
+
 	"github.com/RacoonMediaServer/rms-library/internal/model"
 	rms_library "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-library"
 	"go-micro.dev/v4/logger"
@@ -35,7 +36,7 @@ func (l LibraryService) convertMovie(mov *model.Movie) *rms_library.Movie {
 	return res
 }
 
-func (l LibraryService) GetMovie(ctx context.Context, request *rms_library.GetMovieRequest, response *rms_library.GetMovieResponse) error {
+func (l LibraryService) Get(ctx context.Context, request *rms_library.GetMovieRequest, response *rms_library.GetMovieResponse) error {
 	logger.Infof("GetMovie: %s", request.ID)
 	mov, err := l.db.GetMovie(ctx, request.ID)
 	if err != nil {
@@ -65,7 +66,7 @@ func (l LibraryService) GetMovie(ctx context.Context, request *rms_library.GetMo
 	return nil
 }
 
-func (l LibraryService) GetMovies(ctx context.Context, request *rms_library.GetMoviesRequest, response *rms_library.GetMoviesResponse) error {
+func (l LibraryService) List(ctx context.Context, request *rms_library.GetMoviesRequest, response *rms_library.GetMoviesResponse) error {
 	logger.Infof("GetMovies")
 	movies, err := l.db.SearchMovies(ctx, request.Type)
 	if err != nil {
@@ -83,7 +84,7 @@ func (l LibraryService) GetMovies(ctx context.Context, request *rms_library.GetM
 	return nil
 }
 
-func (l LibraryService) DeleteMovie(ctx context.Context, request *rms_library.DeleteMovieRequest, empty *emptypb.Empty) error {
+func (l LibraryService) Delete(ctx context.Context, request *rms_library.DeleteRequest, empty *emptypb.Empty) error {
 	logger.Infof("DeleteMovie: %s", request.ID)
 	mov, err := l.db.GetMovie(ctx, request.ID)
 	if err != nil {

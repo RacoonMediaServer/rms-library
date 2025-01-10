@@ -1,4 +1,4 @@
-package service
+package movies
 
 import (
 	"bytes"
@@ -128,7 +128,7 @@ func (l LibraryService) downloadMovie(ctx context.Context, mov *model.Movie, t *
 	return nil
 }
 
-func (l LibraryService) DownloadMovieAuto(ctx context.Context, request *rms_library.DownloadMovieAutoRequest, response *rms_library.DownloadMovieAutoResponse) error {
+func (l LibraryService) DownloadAuto(ctx context.Context, request *rms_library.DownloadMovieAutoRequest, response *rms_library.DownloadMovieAutoResponse) error {
 	var downloadedSeasons []uint32
 
 	logger.Infof("DownloadMovieAuto: %s", request.Id)
@@ -218,7 +218,7 @@ func (l LibraryService) downloadTorrent(ctx context.Context, link string) ([]byt
 	return buf.Bytes(), nil
 }
 
-func (l LibraryService) FindMovieTorrents(ctx context.Context, request *rms_library.FindMovieTorrentsRequest, response *rms_library.FindTorrentsResponse) error {
+func (l LibraryService) FindTorrents(ctx context.Context, request *rms_library.FindMovieTorrentsRequest, response *rms_library.FindTorrentsResponse) error {
 	logger.Infof("FindMovieTorrents: %s", request.Id)
 
 	mov, err := l.getOrCreateMovie(ctx, request.Id)
@@ -249,7 +249,7 @@ func (l LibraryService) FindMovieTorrents(ctx context.Context, request *rms_libr
 	return nil
 }
 
-func (l LibraryService) DownloadTorrent(ctx context.Context, request *rms_library.DownloadTorrentRequest, empty *emptypb.Empty) error {
+func (l LibraryService) Download(ctx context.Context, request *rms_library.DownloadTorrentRequest, empty *emptypb.Empty) error {
 	logger.Infof("DownloadTorrent: %s", request.TorrentId)
 	mediaID, ok := l.torrentToMovieID[request.TorrentId]
 	if !ok {
@@ -270,33 +270,33 @@ func (l LibraryService) DownloadTorrent(ctx context.Context, request *rms_librar
 	return l.downloadMovie(ctx, mov, torrent, false)
 }
 
-func (l LibraryService) FindTorrents(ctx context.Context, request *rms_library.FindTorrentsRequest, response *rms_library.FindTorrentsResponse) error {
-	logger.Infof("FindTorrents: %s", request.Query)
-	limitInt := int64(request.Limit)
-	q := &torrents.SearchTorrentsParams{
-		Limit:   &limitInt,
-		Q:       request.Query,
-		Context: ctx,
-		Strong:  &request.Strong,
-	}
+// func (l LibraryService) FindTorrents(ctx context.Context, request *rms_library.FindTorrentsRequest, response *rms_library.FindTorrentsResponse) error {
+// 	logger.Infof("FindTorrents: %s", request.Query)
+// 	limitInt := int64(request.Limit)
+// 	q := &torrents.SearchTorrentsParams{
+// 		Limit:   &limitInt,
+// 		Q:       request.Query,
+// 		Context: ctx,
+// 		Strong:  &request.Strong,
+// 	}
 
-	resp, err := l.cli.Torrents.SearchTorrents(q, l.auth)
-	if err != nil {
-		err = fmt.Errorf("search torrents failed: %w", err)
-		logger.Error(err)
-		return err
-	}
+// 	resp, err := l.cli.Torrents.SearchTorrents(q, l.auth)
+// 	if err != nil {
+// 		err = fmt.Errorf("search torrents failed: %w", err)
+// 		logger.Error(err)
+// 		return err
+// 	}
 
-	for _, t := range resp.Payload.Results {
-		response.Results = append(response.Results, &rms_library.Torrent{
-			Id:      *t.Link,
-			Title:   *t.Title,
-			Size:    uint64(*t.Size),
-			Seeders: uint32(*t.Seeders),
-		})
-	}
-	return nil
-}
+// 	for _, t := range resp.Payload.Results {
+// 		response.Results = append(response.Results, &rms_library.Torrent{
+// 			Id:      *t.Link,
+// 			Title:   *t.Title,
+// 			Size:    uint64(*t.Size),
+// 			Seeders: uint32(*t.Seeders),
+// 		})
+// 	}
+// 	return nil
+// }
 
 func (l LibraryService) searchAndDownloadMovieAtOnce(ctx context.Context, mov *model.Movie, seasons []uint32) (needs []uint32, download []uint32, err error) {
 	needs = seasons
@@ -348,7 +348,7 @@ func (l LibraryService) removeMovieIfEmpty(ctx context.Context, id string) {
 	}
 }
 
-func (l LibraryService) UploadMovie(ctx context.Context, request *rms_library.UploadMovieRequest, empty *emptypb.Empty) error {
+func (l LibraryService) Upload(ctx context.Context, request *rms_library.UploadMovieRequest, empty *emptypb.Empty) error {
 	mov := model.Movie{
 		ID:   request.Id,
 		Info: *request.Info,

@@ -31,9 +31,9 @@ func main() {
 	)
 	service.Init()
 
-	library := rms_library.NewRmsLibraryService("rms-library", service.Client())
+	library := rms_library.NewMoviesService("rms-library", service.Client())
 
-	results, err := library.SearchMovie(context.Background(), &rms_library.SearchMovieRequest{Text: query, Limit: 5}, client.WithRequestTimeout(defaultTimeout))
+	results, err := library.Search(context.Background(), &rms_library.SearchRequest{Text: query, Limit: 5}, client.WithRequestTimeout(defaultTimeout))
 	if err != nil {
 		panic(err)
 	}

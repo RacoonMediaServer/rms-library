@@ -1,4 +1,4 @@
-package service
+package movies
 
 import (
 	"github.com/RacoonMediaServer/rms-library/internal/model"
