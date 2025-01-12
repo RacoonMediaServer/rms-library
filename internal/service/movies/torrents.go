@@ -340,7 +340,7 @@ func (l LibraryService) removeMovieIfEmpty(ctx context.Context, id string) {
 	if err != nil {
 		return
 	}
-	if mov.TorrentID == "" && len(mov.Files) == 0 && len(mov.Seasons) == 0 {
+	if len(mov.Torrents) == 0 {
 		logger.Debugf("Removing empty movie record: %s [ %s ]", id, mov.Info.Title)
 		if err = l.db.DeleteMovie(ctx, id); err != nil {
 			logger.Warnf("Remove empty movie '%s' failed: %s", id, err)

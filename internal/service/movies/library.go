@@ -10,32 +10,6 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-func (l LibraryService) convertMovie(mov *model.Movie) *rms_library.Movie {
-	res := &rms_library.Movie{
-		Id:   mov.ID,
-		Info: &mov.Info,
-	}
-	if mov.Info.Type != rms_library.MovieType_TvSeries {
-		res.Film = &rms_library.FilmLayout{
-			TorrentID: mov.TorrentID,
-		}
-		for _, f := range mov.Files {
-			res.Film.Files = append(res.Film.Files, l.dir.GetMovieFilePath(mov, 0, &f))
-		}
-		return res
-	}
-	res.TvSeries = &rms_library.TvSeriesLayout{}
-	res.TvSeries.Seasons = map[uint32]*rms_library.TvSeriesLayout_Season{}
-	for no, s := range mov.Seasons {
-		layout := rms_library.TvSeriesLayout_Season{}
-		for _, e := range s.Episodes {
-			layout.Files = append(layout.Files, l.dir.GetMovieFilePath(mov, no, &e))
-		}
-		res.TvSeries.Seasons[uint32(no)] = &layout
-	}
-	return res
-}
-
 func (l LibraryService) Get(ctx context.Context, request *rms_library.GetMovieRequest, response *rms_library.GetMovieResponse) error {
 	logger.Infof("GetMovie: %s", request.ID)
 	mov, err := l.db.GetMovie(ctx, request.ID)
@@ -61,8 +35,12 @@ func (l LibraryService) Get(ctx context.Context, request *rms_library.GetMovieRe
 		}
 	}
 
-	response.Result = l.convertMovie(mov)
-	response.Result.Size = l.dm.GetMovieStoreSize(ctx, mov.ID)
+	response.Result = &rms_library.Movie{
+		Id:   mov.ID,
+		Info: &mov.Info,
+		Size: l.dm.GetMovieStoreSize(ctx, mov.ID),
+	}
+
 	return nil
 }
 
@@ -77,8 +55,11 @@ func (l LibraryService) List(ctx context.Context, request *rms_library.GetMovies
 
 	response.Result = make([]*rms_library.Movie, 0, len(movies))
 	for _, m := range movies {
-		result := l.convertMovie(m)
-		result.Size = l.dm.GetMovieStoreSize(ctx, m.ID)
+		result := &rms_library.Movie{
+			Id:   m.ID,
+			Info: &m.Info,
+			Size: l.dm.GetMovieStoreSize(ctx, m.ID),
+		}
 		response.Result = append(response.Result, result)
 	}
 	return nil

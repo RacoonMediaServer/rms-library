@@ -57,7 +57,6 @@ func (l LibraryService) WatchLater(ctx context.Context, request *rms_library.Wat
 
 	item := model.WatchListItem{
 		ID:        request.Id,
-		Type:      media.Movies,
 		MovieInfo: mov.Info,
 	}
 

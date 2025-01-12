@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	"github.com/RacoonMediaServer/rms-library/internal/model"
 	rms_library "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-library"
 	"go.mongodb.org/mongo-driver/bson"
@@ -68,7 +69,7 @@ func (d Database) UpdateMovieContent(ctx context.Context, mov *model.Movie) erro
 	defer cancel()
 
 	filter := bson.D{{"_id", mov.ID}}
-	update := bson.D{{"$set", bson.D{{"files", mov.Files}, {"seasons", mov.Seasons}, {"torrentid", mov.TorrentID}, {"voice", mov.Voice}}}}
+	update := bson.D{{"$set", bson.D{{"seasons", mov.Seasons}, {"torrents", mov.Torrents}, {"voice", mov.Voice}}}}
 	_, err := d.mov.UpdateOne(ctx, filter, update)
 	if err != nil {
 		return err
