@@ -141,6 +141,8 @@ func (m *Manager) DownloadMovie(ctx context.Context, mov *model.Movie, voice str
 		return fmt.Errorf("add torrent failed: %w", err)
 	}
 
+	logger.Infof("Torrent added, id = %s, %d files", resp.Id, len(resp.Files))
+
 	if faster {
 		_, _ = m.cli.UpPriority(ctx, &rms_torrent.UpPriorityRequest{Id: resp.Id})
 	}
