@@ -12,33 +12,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func (d Database) GetDownloadedSeasons(ctx context.Context, id string) ([]uint, error) {
-	ctx, cancel := context.WithTimeout(ctx, databaseTimeout)
-	defer cancel()
-
-	result := d.mov.FindOne(ctx, bson.D{{Key: "_id", Value: id}})
-
-	if errors.Is(result.Err(), mongo.ErrNoDocuments) {
-		return []uint{}, nil
-	}
-
-	if result.Err() != nil {
-		return []uint{}, result.Err()
-	}
-
-	mov := model.Movie{}
-	if err := result.Decode(&mov); err != nil {
-		return []uint{}, err
-	}
-
-	out := make([]uint, 0, len(mov.Seasons))
-	for k, _ := range mov.Seasons {
-		out = append(out, k)
-	}
-
-	return out, nil
-}
-
 func (d Database) GetOrCreateMovie(ctx context.Context, mov *model.Movie) error {
 	ctx, cancel := context.WithTimeout(ctx, databaseTimeout)
 	defer cancel()
@@ -69,7 +42,7 @@ func (d Database) UpdateMovieContent(ctx context.Context, mov *model.Movie) erro
 	defer cancel()
 
 	filter := bson.D{{"_id", mov.ID}}
-	update := bson.D{{"$set", bson.D{{"seasons", mov.Seasons}, {"torrents", mov.Torrents}, {"voice", mov.Voice}}}}
+	update := bson.D{{"$set", bson.D{{"torrents", mov.Torrents}, {"voice", mov.Voice}}}}
 	_, err := d.mov.UpdateOne(ctx, filter, update)
 	if err != nil {
 		return err

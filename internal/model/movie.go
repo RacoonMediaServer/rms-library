@@ -6,6 +6,11 @@ import (
 	rms_library "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-library"
 )
 
+type TorrentRecord struct {
+	ID    string
+	Title string
+}
+
 // Movie represents info about downloaded movie
 type Movie struct {
 	// Global ID of movie or series (related to themoviedb.org)
@@ -15,7 +20,7 @@ type Movie struct {
 	Info rms_library.MovieInfo
 
 	// ID of associated torrents
-	Torrents []string
+	Torrents []TorrentRecord
 
 	// LastAvailableCheck is a time when check of available new seasons has been occurred
 	LastAvailableCheck time.Time
@@ -23,15 +28,8 @@ type Movie struct {
 	// AvailableSeasons contains season which available on trackers
 	AvailableSeasons []uint
 
-	// Seasons contain all info about downloaded seasons of TV series
-	Seasons map[uint]bool
-
 	// Voice contains downloaded voice for series seasons
 	Voice string
-}
-
-func (m *Movie) IsSeasonDownloaded(no uint) bool {
-	return m.Seasons[no]
 }
 
 func (m *Movie) SetVoice(voice string) {
@@ -40,6 +38,17 @@ func (m *Movie) SetVoice(voice string) {
 	}
 }
 
-func (m *Movie) RemoveSeason(no uint) {
-	m.Seasons[no] = false
+func (m *Movie) RemoveTorrent(id string) bool {
+	for i := range m.Torrents {
+		if m.Torrents[i].ID == id {
+			m.Torrents = append(m.Torrents[:i], m.Torrents[i+1:]...)
+			return true
+		}
+	}
+
+	return false
+}
+
+func (m *Movie) AddTorrent(id, title string) {
+	m.Torrents = append(m.Torrents, TorrentRecord{ID: id, Title: title})
 }

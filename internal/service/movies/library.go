@@ -38,7 +38,7 @@ func (l LibraryService) Get(ctx context.Context, request *rms_library.GetMovieRe
 	response.Result = &rms_library.Movie{
 		Id:   mov.ID,
 		Info: &mov.Info,
-		Size: l.dm.GetMovieStoreSize(ctx, mov.ID),
+		Size: l.dm.GetMovieStoreSize(ctx, mov),
 	}
 
 	return nil
@@ -58,7 +58,7 @@ func (l LibraryService) List(ctx context.Context, request *rms_library.GetMovies
 		result := &rms_library.Movie{
 			Id:   m.ID,
 			Info: &m.Info,
-			Size: l.dm.GetMovieStoreSize(ctx, m.ID),
+			Size: l.dm.GetMovieStoreSize(ctx, m),
 		}
 		response.Result = append(response.Result, result)
 	}

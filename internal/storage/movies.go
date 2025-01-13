@@ -4,14 +4,42 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/RacoonMediaServer/rms-library/internal/analysis"
 	"github.com/RacoonMediaServer/rms-library/internal/model"
 	rms_library "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-library"
 	"go-micro.dev/v4/logger"
 )
+
+func (m *Manager) GetDownloadedSeasons(mov *model.Movie) map[uint]struct{} {
+	seasons := map[uint]struct{}{}
+	for _, t := range mov.Torrents {
+		contentPath := m.getFullFilePath(t, "")
+		err := filepath.Walk(contentPath,
+			func(path string, info os.FileInfo, err error) error {
+				if err != nil {
+					return err
+				}
+				if info.IsDir() {
+					return nil
+				}
+
+				result := analysis.Analyze(path)
+				if result.Season != 0 {
+					seasons[result.Season] = struct{}{}
+				}
+				return nil
+			})
+		if err != nil {
+			logger.Warnf("Walk through %s failed: %s", contentPath, err)
+		}
+	}
+	return seasons
+}
 
 func getMovieDirectories(mov *model.Movie) (directories []string) {
 	title := escape(mov.Info.Title)
@@ -34,13 +62,13 @@ func getMovieDirectories(mov *model.Movie) (directories []string) {
 	return
 }
 
-func (m *Manager) getFullFilePath(torrentID, shortPath string) string {
+func (m *Manager) getFullFilePath(t model.TorrentRecord, shortPath string) string {
 	if m.dirs.Layout == "" {
-		return path.Join(m.dirs.Downloads, shortPath)
+		return path.Join(m.dirs.Downloads, t.Title, shortPath)
 	}
 
-	subDir := strings.ReplaceAll(m.dirs.Layout, "%ID", torrentID)
-	return path.Join(m.dirs.Downloads, subDir, shortPath)
+	subDir := strings.ReplaceAll(m.dirs.Layout, "%ID", t.ID)
+	return path.Join(m.dirs.Downloads, subDir, t.Title, shortPath)
 }
 
 func (m *Manager) createFilmLinks(mov *model.Movie, dir string) {

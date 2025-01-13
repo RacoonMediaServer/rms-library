@@ -10,7 +10,6 @@ import (
 
 // Database requires some methods for load and store data
 type Database interface {
-	GetDownloadedSeasons(ctx context.Context, id string) ([]uint, error)
 	GetOrCreateMovie(ctx context.Context, mov *model.Movie) error
 	GetMovie(ctx context.Context, id string) (*model.Movie, error)
 	SearchMovies(ctx context.Context, movieType *rms_library.MovieType) ([]*model.Movie, error)
@@ -24,6 +23,7 @@ type Database interface {
 }
 
 type DirectoryManager interface {
+	GetDownloadedSeasons(mov *model.Movie) map[uint]struct{}
 	GetMovieFilePath(mov *model.Movie, season uint, f *model.File) string
 	StoreWatchListTorrent(itemTitle string, torrent []byte) (id string, err error)
 }
@@ -33,5 +33,5 @@ type DownloadsManager interface {
 	RemoveMovie(ctx context.Context, mov *model.Movie) error
 	GetMovieByTorrent(torrentID string) (string, bool)
 	HandleTorrentEvent(kind events.Notification_Kind, torrentID string, mov *model.Movie)
-	GetMovieStoreSize(ctx context.Context, id string) uint64
+	GetMovieStoreSize(ctx context.Context, mov *model.Movie) uint64
 }
