@@ -148,8 +148,10 @@ func (l LibraryService) DownloadAuto(ctx context.Context, request *rms_library.D
 	if mov.Info.Type == rms_library.MovieType_TvSeries {
 		if request.Season == nil {
 			if mov.Info.Seasons != nil {
+				existsSeasons := l.dir.GetDownloadedSeasons(mov)
 				for i := 1; i <= int(*mov.Info.Seasons); i++ {
-					if !mov.IsSeasonDownloaded(uint(i)) {
+					_, downloaded := existsSeasons[uint(i)]
+					if !downloaded {
 						seasons = append(seasons, uint32(i))
 					} else {
 						somethingAlreadyDownloaded = true
@@ -318,7 +320,7 @@ func (l LibraryService) searchAndDownloadMovieAtOnce(ctx context.Context, mov *m
 		return
 	}
 
-	for no, _ := range mov.Seasons {
+	for _, no := range torrent.Seasons {
 		download = append(download, uint32(no))
 		for i, s := range needs {
 			if s == uint32(no) {

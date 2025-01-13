@@ -60,16 +60,17 @@ func (l LibraryService) Search(ctx context.Context, request *rms_library.SearchR
 			SeasonsDownloaded: make([]uint32, 0),
 		}
 
+		existingMovie, _ := l.db.GetMovie(ctx, *r.ID)
+
 		if err = l.db.PutMovieInfo(ctx, *r.ID, mov.Info); err != nil {
 			logger.Warnf("Save movie info to cache failed: %s", err)
 		}
 
-		seasons, err := l.db.GetDownloadedSeasons(ctx, *r.ID)
-		if err != nil {
-			logger.Warnf("load info about downloaded seasons failed: %s", err)
-		}
-		for i := range seasons {
-			mov.SeasonsDownloaded = append(mov.SeasonsDownloaded, uint32(seasons[i]))
+		if existingMovie != nil {
+			seasons := l.dir.GetDownloadedSeasons(existingMovie)
+			for no := range seasons {
+				mov.SeasonsDownloaded = append(mov.SeasonsDownloaded, uint32(no))
+			}
 		}
 		response.Movies = append(response.Movies, mov)
 	}

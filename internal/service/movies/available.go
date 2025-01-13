@@ -53,8 +53,10 @@ func (l LibraryService) findUpdates(mov *model.Movie) error {
 	strong := true
 	torrentType := "movies"
 
+	downloadedSeasons := l.dir.GetDownloadedSeasons(mov)
+
 	for no := uint(1); no <= uint(info.Payload.Seasons); no++ {
-		if _, ok := mov.Seasons[no]; ok {
+		if _, ok := downloadedSeasons[no]; ok {
 			continue
 		}
 		// проверяем что сезон есть на торрентах
@@ -97,7 +99,8 @@ func (l LibraryService) GetTvSeriesUpdates(ctx context.Context, empty *emptypb.E
 	for _, mov := range series {
 		seasons := make([]uint32, 0, len(mov.AvailableSeasons))
 		for _, no := range mov.AvailableSeasons {
-			if _, ok := mov.Seasons[no]; !ok {
+			downloadedSeasons := l.dir.GetDownloadedSeasons(mov)
+			if _, ok := downloadedSeasons[no]; !ok {
 				seasons = append(seasons, uint32(no))
 			}
 		}

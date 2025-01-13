@@ -2,6 +2,7 @@ package downloads
 
 import (
 	"context"
+
 	"github.com/RacoonMediaServer/rms-library/internal/model"
 	rms_library "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-library"
 )
@@ -13,6 +14,7 @@ type Database interface {
 }
 
 type DirectoryManager interface {
+	GetDownloadedSeasons(mov *model.Movie) map[uint]struct{}
 	CreateMovieLayout(mov *model.Movie)
 	DeleteMovieLayout(mov *model.Movie)
 	CreateMoviesLayout(movies []*model.Movie) error
