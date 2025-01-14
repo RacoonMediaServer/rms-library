@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"fmt"
 	"io/fs"
 	"os"
 	"path"
@@ -47,14 +48,12 @@ func newMovieLayout(mov *model.Movie, downloadsDir, reprDir string) *movieLayout
 
 func (l *movieLayout) buildIndex() {
 	for _, t := range l.mov.Torrents {
-		torrentDir := filepath.Join(model.GetCategory(l.mov.Info.Type), t.Title)
-		logger.Warnf("Scan directory %s", torrentDir)
-		l.addContentDirectory(torrentDir)
+		l.addContentDirectory(t.Title)
 	}
 }
 
 func (l *movieLayout) addContentDirectory(dir string) {
-	fullDir := filepath.Join(l.downloadsRootDir, dir)
+	fullDir := filepath.Join(l.downloadsRootDir, model.GetCategory(l.mov.Info.Type), dir)
 	files := []dirEntry{}
 	err := filepath.Walk(fullDir, func(path string, info fs.FileInfo, err error) error {
 		if err != nil {
@@ -65,7 +64,7 @@ func (l *movieLayout) addContentDirectory(dir string) {
 		}
 
 		relpath := ""
-		relpath, err = filepath.Rel(l.downloadsRootDir, path)
+		relpath, err = filepath.Rel(filepath.Join(l.downloadsRootDir, model.GetCategory(l.mov.Info.Type)), path)
 		if err != nil {
 			return err
 		}
@@ -91,6 +90,9 @@ func (l *movieLayout) addContentDirectory(dir string) {
 	l.rawFolders[dir] = files
 
 	if err != nil {
+		if os.IsNotExist(err) {
+			return
+		}
 		logger.Errorf("Iterate directory '%s' failed: %s", fullDir, err)
 		return
 	}
@@ -154,15 +156,15 @@ func (l *movieLayout) makeFilmLink(dir string) {
 }
 
 func (l *movieLayout) makeRawLinks(dir string) {
-	for _, folder := range l.rawFolders {
-		for _, entry := range folder {
-			l.makeLink(dir, entry)
+	for rootDir, files := range l.rawFolders {
+		for _, entry := range files {
+			l.makeLink(filepath.Join(dir, rootDir), entry)
 		}
 	}
 }
 
 func (l *movieLayout) makeSeasonLinks(dir string, no uint, season map[int]dirEntry) {
 	for _, episode := range season {
-		l.makeLink(dir, episode)
+		l.makeLink(filepath.Join(dir, fmt.Sprintf("Сезон %d", no)), episode)
 	}
 }
