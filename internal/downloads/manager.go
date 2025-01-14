@@ -92,7 +92,7 @@ func (m *Manager) DownloadMovie(ctx context.Context, mov *model.Movie, voice str
 	if err != nil {
 		return fmt.Errorf("add torrent failed: %w", err)
 	}
-	mov.AddTorrent(mov.ID, resp.Title)
+	mov.AddTorrent(resp.Id, resp.Title)
 	logger.Infof("Torrent added, id = %s, %d files", resp.Id, len(resp.Files))
 
 	if faster {

@@ -54,14 +54,14 @@ func main() {
 		panic(err)
 	}
 
-	// resp, err := library.DownloadMovie(context.Background(), &rms_library.DownloadMovieRequest{Id: results.Movies[no-1].Id}, client.WithRequestTimeout(defaultTimeout))
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// fmt.Println("Found: ", resp.Found)
-	// fmt.Println("Seasons: ", resp.Seasons)
-	_, err = library.WatchLater(context.Background(), &rms_library.WatchLaterRequest{Id: results.Movies[no-1].Id}, client.WithRequestTimeout(defaultTimeout))
+	resp, err := library.DownloadAuto(context.Background(), &rms_library.DownloadMovieAutoRequest{Id: results.Movies[no-1].Id}, client.WithRequestTimeout(defaultTimeout))
 	if err != nil {
 		panic(err)
 	}
+	fmt.Println("Found: ", resp.Found)
+	fmt.Println("Seasons: ", resp.Seasons)
+	// _, err = library.WatchLater(context.Background(), &rms_library.WatchLaterRequest{Id: results.Movies[no-1].Id}, client.WithRequestTimeout(defaultTimeout))
+	// if err != nil {
+	// 	panic(err)
+	// }
 }
