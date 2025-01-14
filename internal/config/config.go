@@ -32,18 +32,8 @@ type Directories struct {
 	// Downloads mean path to torrents content
 	Downloads string
 
-	// Layout means how dowloads organized. Common values:
-	// "" (empty) - torrents stored as they downloaded
-	// "%ID" - torrents organized by ID subdirectories
-	// "data" - torrents organized in subfolder 'data'
-	Layout string
-
 	// Content means path to organized media
 	Content string
-
-	// Save original layout for internal torrent files
-	// if false - the library decorate files
-	SaveOriginalLayout bool `json:"save-original-layout"`
 
 	// Path to directory for store watch-list torrent files
 	WatchList string `json:"watch-list"`

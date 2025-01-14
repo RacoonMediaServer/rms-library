@@ -10,9 +10,7 @@
   },
   "directories": {
     "downloads": "/media/library/torrents",
-    "layout": "%ID",
     "content": "/media/library/movies",
-    "save-original-layout": true,
     "watch-list": "/media/library/watchlist"
   }
 }

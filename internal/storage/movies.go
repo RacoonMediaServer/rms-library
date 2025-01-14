@@ -5,20 +5,18 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"strings"
 	"unicode"
 	"unicode/utf8"
 
 	"github.com/RacoonMediaServer/rms-library/internal/analysis"
 	"github.com/RacoonMediaServer/rms-library/internal/model"
-	rms_library "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-library"
 	"go-micro.dev/v4/logger"
 )
 
 func (m *Manager) GetDownloadedSeasons(mov *model.Movie) map[uint]struct{} {
 	seasons := map[uint]struct{}{}
 	for _, t := range mov.Torrents {
-		contentPath := m.getFullFilePath(t, "")
+		contentPath := filepath.Join(m.dirs.Downloads, t.Title)
 		err := filepath.Walk(contentPath,
 			func(path string, info os.FileInfo, err error) error {
 				if err != nil {
@@ -62,81 +60,6 @@ func getMovieDirectories(mov *model.Movie) (directories []string) {
 	return
 }
 
-func (m *Manager) getFullFilePath(t model.TorrentRecord, shortPath string) string {
-	if m.dirs.Layout == "" {
-		return path.Join(m.dirs.Downloads, t.Title, shortPath)
-	}
-
-	subDir := strings.ReplaceAll(m.dirs.Layout, "%ID", t.ID)
-	return path.Join(m.dirs.Downloads, subDir, t.Title, shortPath)
-}
-
-func (m *Manager) createFilmLinks(mov *model.Movie, dir string) {
-	for _, f := range mov.Files {
-		if f.Type != model.FileTypeInsignificant {
-			oldName := m.getFullFilePath(mov.TorrentID, f.Path)
-			newName := path.Join(dir, composeMovieFileName(mov, &f))
-			_ = os.MkdirAll(path.Dir(newName), mediaPerms)
-			if err := os.Symlink(oldName, newName); err != nil {
-				logger.Warnf("Create link failed: %s", err)
-			}
-		}
-	}
-
-	if m.dirs.SaveOriginalLayout {
-		dir = path.Join(dir, "_Torrent")
-		m.createClipLinks(mov, dir)
-	}
-}
-
-func (m *Manager) createClipLinks(mov *model.Movie, dir string) {
-	m.createRawLinks(mov.TorrentID, mov.Files, dir)
-}
-
-func (m *Manager) createRawLinks(torrent string, files []model.File, dir string) {
-	for _, f := range files {
-		oldName := m.getFullFilePath(torrent, f.Path)
-		newName := path.Join(dir, f.Path)
-		_ = os.MkdirAll(path.Dir(newName), mediaPerms)
-		if err := os.Symlink(oldName, newName); err != nil {
-			logger.Warnf("Create link failed: %s", err)
-		}
-	}
-}
-
-func (m *Manager) createSeasonLinks(mov *model.Movie, dir string, no uint, s *model.Season) {
-	for _, e := range s.Episodes {
-		if e.Type == model.FileTypeInsignificant {
-			continue
-		}
-
-		oldName := m.getFullFilePath(s.TorrentID, e.Path)
-		newName := path.Join(dir, composeMovieFileName(mov, &e))
-
-		_ = os.MkdirAll(path.Dir(newName), mediaPerms)
-
-		if _, err := os.Stat(oldName); err != nil {
-			continue
-		}
-		if err := os.Symlink(oldName, newName); err != nil {
-			logger.Warnf("Create link failed: %s", err)
-		}
-	}
-}
-
-// GetMovieFilePath returns relative tv-series or movie file path
-func (m *Manager) GetMovieFilePath(mov *model.Movie, season uint, f *model.File) string {
-	switch mov.Info.Type {
-	case rms_library.MovieType_Film:
-		return path.Join(getMovieCategoryDir(mov), mov.Info.Title, composeMovieFileName(mov, f))
-	case rms_library.MovieType_TvSeries:
-		return path.Join(getMovieCategoryDir(mov), mov.Info.Title, fmt.Sprintf("Сезон %d", season), composeMovieFileName(mov, f))
-	case rms_library.MovieType_Clip:
-		return path.Join(getMovieCategoryDir(mov), mov.Info.Title, composeMovieFileName(mov, f))
-	}
-	return ""
-}
-
 func (m *Manager) CreateMoviesLayout(movies []*model.Movie) error {
 	dirs, err := os.ReadDir(m.dirs.Content)
 	if err != nil {
@@ -156,45 +79,8 @@ func (m *Manager) CreateMoviesLayout(movies []*model.Movie) error {
 // CreateMovieLayout creates pretty symbolic links to movie
 func (m *Manager) CreateMovieLayout(mov *model.Movie) {
 	m.cmd <- func() {
-		dirs := getMovieDirectories(mov)
-
-		for _, dir := range dirs {
-			dir = path.Join(m.dirs.Content, dir)
-			_ = os.RemoveAll(dir)
-
-			if err := os.MkdirAll(dir, mediaPerms); err != nil {
-				logger.Warnf("Cannot create directory: %s", err)
-				continue
-			}
-			switch mov.Info.Type {
-			case rms_library.MovieType_TvSeries:
-				for no, season := range mov.Seasons {
-					dir := path.Join(dir, fmt.Sprintf("Сезон %d", no))
-					if err := os.MkdirAll(dir, mediaPerms); err != nil {
-						logger.Warnf("Cannot create directory: %s", err)
-					}
-					m.createSeasonLinks(mov, dir, no, season)
-				}
-				if m.dirs.SaveOriginalLayout {
-					m.createOriginalLinks(mov, dir)
-				}
-			case rms_library.MovieType_Film:
-				m.createFilmLinks(mov, dir)
-			case rms_library.MovieType_Clip:
-				m.createClipLinks(mov, dir)
-			}
-		}
-	}
-}
-
-func (m *Manager) createOriginalLinks(mov *model.Movie, dir string) {
-	dir = path.Join(dir, "_Torrent")
-	if mov.TorrentID != "" {
-		m.createRawLinks(mov.TorrentID, mov.Files, path.Join(dir, mov.TorrentID))
-	}
-
-	for _, s := range mov.Seasons {
-		m.createRawLinks(s.TorrentID, s.Episodes, path.Join(dir, s.TorrentID))
+		l := newMovieLayout(mov, m.dirs.Downloads, m.dirs.Content)
+		l.make()
 	}
 }
 
