@@ -24,7 +24,6 @@ type Database interface {
 
 type DirectoryManager interface {
 	GetDownloadedSeasons(mov *model.Movie) map[uint]struct{}
-	GetMovieFilePath(mov *model.Movie, season uint, f *model.File) string
 	StoreWatchListTorrent(itemTitle string, torrent []byte) (id string, err error)
 }
 

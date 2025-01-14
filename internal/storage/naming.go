@@ -2,9 +2,10 @@ package storage
 
 import (
 	"fmt"
+	"path"
+
 	"github.com/RacoonMediaServer/rms-library/internal/model"
 	rms_library "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-library"
-	"path"
 )
 
 const (
@@ -16,32 +17,29 @@ const (
 	nameByYear   = "Год"
 )
 
-func composeMovieFileName(mov *model.Movie, f *model.File) string {
-	_, fileName := path.Split(f.Path)
-	ext := path.Ext(f.Path)
+func composeMovieFileName(mov *model.Movie, f *dirEntry) string {
+	_, fileName := path.Split(f.path)
+	ext := path.Ext(f.path)
 
 	switch mov.Info.Type {
 	case rms_library.MovieType_Film:
-		if len(mov.Files) == 1 {
-			return fmt.Sprintf("%s%s", mov.Info.Title, ext)
-		}
-		if f.Title == "" {
+		if f.info.EpisodeName == "" {
 			return fileName
 		}
-		return escape(f.Title) + ext
+		return escape(f.info.EpisodeName) + ext
 	case rms_library.MovieType_TvSeries:
-		if f.No < 0 {
-			if f.Title == "" {
+		if f.info.Episode < 0 {
+			if f.info.EpisodeName == "" {
 				return fileName
 			}
-			return f.Title + ext
+			return f.info.EpisodeName + ext
 		}
-		if f.Title == "" {
-			return fmt.Sprintf("E%02d%s", f.No, ext)
+		if f.info.EpisodeName == "" {
+			return fmt.Sprintf("E%02d%s", f.info.Episode, ext)
 		}
-		return fmt.Sprintf("E%02d. %s", f.No, fileName)
+		return fmt.Sprintf("E%02d. %s", f.info.Episode, fileName)
 	case rms_library.MovieType_Clip:
-		return f.Path
+		return f.relpath
 	}
 
 	return ""
