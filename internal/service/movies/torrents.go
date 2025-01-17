@@ -20,24 +20,7 @@ import (
 
 var errAnyTorrentsNotFound = errors.New("any torrents not found")
 
-func (l LibraryService) searchMovieTorrents(ctx context.Context, mov *rms_library.MovieInfo, season *uint32, limit uint) ([]*models.SearchTorrentsResult, error) {
-	strong := true
-	q := torrents.SearchTorrentsAsyncBody{
-		Limit:  int64(limit),
-		Q:      &mov.Title,
-		Type:   "movies",
-		Strong: &strong,
-	}
-
-	if mov.Type == rms_library.MovieType_TvSeries && season != nil {
-		s := int64(*season)
-		q.Season = s
-	}
-
-	if mov.Type == rms_library.MovieType_Film && mov.Year != 0 {
-		q.Year = int64(mov.Year)
-	}
-
+func (l LibraryService) asyncTorrentsSearch(ctx context.Context, q torrents.SearchTorrentsAsyncBody) ([]*models.SearchTorrentsResult, error) {
 	sess, err := l.cli.Torrents.SearchTorrentsAsync(&torrents.SearchTorrentsAsyncParams{SearchParameters: q, Context: ctx}, l.auth)
 	if err != nil {
 		return nil, err
@@ -63,6 +46,32 @@ func (l LibraryService) searchMovieTorrents(ctx context.Context, mov *rms_librar
 			continue
 		}
 	}
+}
+
+func (l LibraryService) searchMovieTorrents(ctx context.Context, mov *rms_library.MovieInfo, season *uint32, limit uint) (result []*models.SearchTorrentsResult, err error) {
+	strong := true
+	q := torrents.SearchTorrentsAsyncBody{
+		Limit:  int64(limit),
+		Q:      &mov.Title,
+		Type:   "movies",
+		Strong: &strong,
+	}
+
+	if mov.Type == rms_library.MovieType_TvSeries && season != nil {
+		s := int64(*season)
+		q.Season = s
+	}
+
+	if mov.Type == rms_library.MovieType_Film && mov.Year != 0 {
+		q.Year = int64(mov.Year)
+	}
+
+	result, err = l.asyncTorrentsSearch(ctx, q)
+	if err == nil && len(result) == 0 && mov.Title != mov.OriginalTitle && mov.OriginalTitle != "" {
+		q.Q = &mov.OriginalTitle
+		result, err = l.asyncTorrentsSearch(ctx, q)
+	}
+	return
 }
 
 func (l LibraryService) getOrCreateMovie(ctx context.Context, id string) (*model.Movie, error) {

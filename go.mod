@@ -3,12 +3,14 @@ module github.com/RacoonMediaServer/rms-library
 go 1.20
 
 require (
-	github.com/RacoonMediaServer/rms-media-discovery v1.7.4
-	github.com/RacoonMediaServer/rms-packages v1.16.3
+	github.com/RacoonMediaServer/rms-media-discovery v1.8.0
+	github.com/RacoonMediaServer/rms-packages v1.16.4
 	github.com/antzucaro/matchr v0.0.0-20221106193745-7bed6ef61ef9
+	github.com/apex/log v1.9.0
 	github.com/go-micro/plugins/v4/registry/etcd v1.2.0
 	github.com/go-openapi/runtime v0.25.0
 	github.com/go-openapi/strfmt v0.21.3
+	github.com/google/uuid v1.2.0
 	github.com/stretchr/testify v1.8.4
 	github.com/urfave/cli/v2 v2.3.0
 	go-micro.dev/v4 v4.9.0
@@ -20,7 +22,6 @@ require (
 	github.com/Microsoft/go-winio v0.5.0 // indirect
 	github.com/ProtonMail/go-crypto v0.0.0-20210428141323-04723f9f07d7 // indirect
 	github.com/acomagu/bufpipe v1.0.3 // indirect
-	github.com/apex/log v1.9.0 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d // indirect
 	github.com/bitly/go-simplejson v0.5.0 // indirect
 	github.com/coreos/go-semver v0.3.0 // indirect
@@ -51,7 +52,6 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
-	github.com/google/uuid v1.2.0 // indirect
 	github.com/gorilla/handlers v1.5.1 // indirect
 	github.com/imdario/mergo v0.3.12 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect

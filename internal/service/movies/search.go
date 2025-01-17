@@ -12,12 +12,13 @@ import (
 
 func convertMovieInfo(in *models.SearchMoviesResult) *rms_library.MovieInfo {
 	out := &rms_library.MovieInfo{
-		Title:       *in.Title,
-		Description: in.Description,
-		Year:        uint32(in.Year),
-		Poster:      in.Poster,
-		Genres:      in.Genres,
-		Rating:      float32(in.Rating),
+		Title:         *in.Title,
+		Description:   in.Description,
+		Year:          uint32(in.Year),
+		Poster:        in.Poster,
+		Genres:        in.Genres,
+		Rating:        float32(in.Rating),
+		OriginalTitle: in.OriginalTitle,
 	}
 
 	if in.Seasons != 0 {
