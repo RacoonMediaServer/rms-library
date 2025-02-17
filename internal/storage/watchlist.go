@@ -17,3 +17,7 @@ func (m *Manager) StoreWatchListTorrent(itemTitle string, torrent []byte) (id st
 	}
 	return
 }
+
+func (m *Manager) LoadWatchListTorrent(contentPath string) ([]byte, error) {
+	return os.ReadFile(filepath.Join(m.dirs.WatchList, contentPath))
+}

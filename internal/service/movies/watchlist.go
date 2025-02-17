@@ -23,10 +23,10 @@ func boundResults(results []*models.SearchTorrentsResult) []*models.SearchTorren
 	return results
 }
 
-func (l LibraryService) fetchTorrentFiles(ctx context.Context, title string, results []*models.SearchTorrentsResult) []model.TorrentItem {
+func (l LibraryService) fetchTorrentFiles(ctx context.Context, searcher torrentSearchEngine, title string, results []*models.SearchTorrentsResult) []model.TorrentItem {
 	items := make([]model.TorrentItem, 0, len(results))
 	for _, r := range results {
-		content, err := l.downloadTorrent(ctx, *r.Link)
+		content, err := searcher.GetTorrentFile(ctx, *r.Link)
 		if err != nil {
 			logger.Warnf("Download torrent failed: %s", err)
 			continue
@@ -46,18 +46,32 @@ func (l LibraryService) fetchTorrentFiles(ctx context.Context, title string, res
 	return items
 }
 
+// GetWatchList implements rms_library.MoviesHandler.
+func (l *LibraryService) GetWatchList(ctx context.Context, request *rms_library.GetMoviesRequest, response *rms_library.GetMoviesResponse) error {
+	list, err := l.db.GetWatchList(ctx, request.Type)
+	if err != nil {
+		logger.Errorf("Get watch list failed: %s", err)
+		return err
+	}
+
+	response.Result = make([]*rms_library.Movie, len(list))
+	for i, item := range list {
+		response.Result[i] = &rms_library.Movie{
+			Id:   item.ID,
+			Info: &item.MovieInfo,
+		}
+	}
+
+	return nil
+}
+
 func (l LibraryService) WatchLater(ctx context.Context, request *rms_library.WatchLaterRequest, empty *emptypb.Empty) error {
 	logger.Infof("WatchLater: %s", request.Id)
-	mov, err := l.getOrCreateMovie(ctx, request.Id)
+	mov, err := l.getOrCreateMovie(ctx, request.Id, false)
 	if err != nil {
 		err = fmt.Errorf("get or create movie failed: %s", err)
 		logger.Error(err)
 		return err
-	}
-
-	item := model.WatchListItem{
-		ID:        request.Id,
-		MovieInfo: mov.Info,
 	}
 
 	sel := l.getMovieSelector(mov)
@@ -66,11 +80,15 @@ func (l LibraryService) WatchLater(ctx context.Context, request *rms_library.Wat
 		MediaType: media.Movies,
 		Query:     mov.Info.Title,
 	}
-	if mov.Info.Type == rms_library.MovieType_TvSeries {
-		opts.Criteria = selector.CriteriaCompact
+
+	searchEngine := &remoteSearchEngine{service: l.cli.Torrents, auth: l.auth}
+
+	item := model.WatchListItem{
+		ID:        request.Id,
+		MovieInfo: mov.Info,
 	}
 
-	result, err := l.searchMovieTorrents(ctx, &mov.Info, nil, searchTorrentsLimit)
+	result, err := searchEngine.SearchTorrents(ctx, mov, nil)
 	if err != nil {
 		logger.Errorf("Find torrents failed: %s", err)
 		return err
@@ -82,20 +100,20 @@ func (l LibraryService) WatchLater(ctx context.Context, request *rms_library.Wat
 	result = boundResults(result)
 
 	go func() {
-		item.Torrents = l.fetchTorrentFiles(context.Background(), mov.Info.Title, result)
+		item.Torrents = l.fetchTorrentFiles(context.Background(), searchEngine, mov.Info.Title, result)
 
 		if mov.Info.Type == rms_library.MovieType_TvSeries && mov.Info.Seasons != nil {
 			opts.Criteria = selector.CriteriaQuality
 			item.Seasons = map[uint][]model.TorrentItem{}
 			for season := uint32(1); season <= *mov.Info.Seasons; season++ {
-				result, err = l.searchMovieTorrents(context.Background(), &mov.Info, &season, searchTorrentsLimit)
+				result, err = searchEngine.SearchTorrents(context.Background(), mov, &season)
 				if err != nil {
 					logger.Errorf("Find torrents failed: %s", err)
 					continue
 				}
 				sel.Sort(result, opts)
 				result = boundResults(result)
-				item.Seasons[uint(season)] = l.fetchTorrentFiles(context.Background(), mov.Info.Title, result)
+				item.Seasons[uint(season)] = l.fetchTorrentFiles(context.Background(), searchEngine, mov.Info.Title, result)
 				logger.Infof("For %s [ %s ] found season no%.d, torrents: %d", mov.Info.Title, mov.ID, season, len(result))
 			}
 		}

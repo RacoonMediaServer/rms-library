@@ -1,12 +1,9 @@
 package movies
 
 import (
-	"context"
-
 	"github.com/RacoonMediaServer/rms-library/internal/config"
 	"github.com/RacoonMediaServer/rms-media-discovery/pkg/client/client"
 	"github.com/RacoonMediaServer/rms-media-discovery/pkg/client/models"
-	rms_library "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-library"
 	"github.com/RacoonMediaServer/rms-packages/pkg/service/servicemgr"
 	"github.com/go-openapi/runtime"
 	httptransport "github.com/go-openapi/runtime/client"
@@ -29,11 +26,6 @@ type LibraryService struct {
 	dm               DownloadsManager
 	torrentToMovieID map[string]string
 	torrentToResult  map[string]*models.SearchTorrentsResult
-}
-
-// GetWatchList implements rms_library.MoviesHandler.
-func (l *LibraryService) GetWatchList(context.Context, *rms_library.GetMoviesRequest, *rms_library.GetMoviesResponse) error {
-	panic("unimplemented")
 }
 
 // Settings holds all dependencies of service

@@ -12,6 +12,7 @@ import (
 	"github.com/urfave/cli/v2"
 	"go-micro.dev/v4"
 	"go-micro.dev/v4/client"
+	"go-micro.dev/v4/logger"
 )
 
 const defaultTimeout = 2 * time.Minute
@@ -32,6 +33,15 @@ func main() {
 	service.Init()
 
 	library := rms_library.NewMoviesService("rms-library", service.Client())
+
+	watchList, err := library.GetWatchList(context.Background(), &rms_library.GetMoviesRequest{}, client.WithRequestTimeout(defaultTimeout))
+	if err != nil {
+		panic(err)
+	}
+
+	for _, mov := range watchList.Result {
+		logger.Infof("Item '%s' found in the watchlist", mov.Info.Title)
+	}
 
 	results, err := library.Search(context.Background(), &rms_library.SearchRequest{Text: query, Limit: 5}, client.WithRequestTimeout(defaultTimeout))
 	if err != nil {
@@ -54,7 +64,7 @@ func main() {
 		panic(err)
 	}
 
-	resp, err := library.DownloadAuto(context.Background(), &rms_library.DownloadMovieAutoRequest{Id: results.Movies[no-1].Id}, client.WithRequestTimeout(defaultTimeout))
+	resp, err := library.DownloadAuto(context.Background(), &rms_library.DownloadMovieAutoRequest{Id: results.Movies[no-1].Id, UseWatchList: true}, client.WithRequestTimeout(defaultTimeout))
 	if err != nil {
 		panic(err)
 	}

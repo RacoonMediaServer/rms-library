@@ -20,11 +20,14 @@ type Database interface {
 	GetMovieInfo(ctx context.Context, id string) (*rms_library.MovieInfo, error)
 
 	AddToWatchList(ctx context.Context, item *model.WatchListItem) error
+	GetWatchList(ctx context.Context, movieType *rms_library.MovieType) ([]*model.WatchListItem, error)
+	GetWatchListItem(ctx context.Context, id string) (*model.WatchListItem, error)
 }
 
 type DirectoryManager interface {
 	GetDownloadedSeasons(mov *model.Movie) map[uint]struct{}
 	StoreWatchListTorrent(itemTitle string, torrent []byte) (id string, err error)
+	LoadWatchListTorrent(contentPath string) ([]byte, error)
 }
 
 type DownloadsManager interface {
