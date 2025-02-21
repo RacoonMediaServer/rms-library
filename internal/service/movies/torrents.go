@@ -189,34 +189,6 @@ func (l LibraryService) Download(ctx context.Context, request *rms_library.Downl
 	return l.dm.DownloadMovie(ctx, mov, torrent.Voice, data, false)
 }
 
-// func (l LibraryService) FindTorrents(ctx context.Context, request *rms_library.FindTorrentsRequest, response *rms_library.FindTorrentsResponse) error {
-// 	logger.Infof("FindTorrents: %s", request.Query)
-// 	limitInt := int64(request.Limit)
-// 	q := &torrents.SearchTorrentsParams{
-// 		Limit:   &limitInt,
-// 		Q:       request.Query,
-// 		Context: ctx,
-// 		Strong:  &request.Strong,
-// 	}
-
-// 	resp, err := l.cli.Torrents.SearchTorrents(q, l.auth)
-// 	if err != nil {
-// 		err = fmt.Errorf("search torrents failed: %w", err)
-// 		logger.Error(err)
-// 		return err
-// 	}
-
-// 	for _, t := range resp.Payload.Results {
-// 		response.Results = append(response.Results, &rms_library.Torrent{
-// 			Id:      *t.Link,
-// 			Title:   *t.Title,
-// 			Size:    uint64(*t.Size),
-// 			Seeders: uint32(*t.Seeders),
-// 		})
-// 	}
-// 	return nil
-// }
-
 func (l LibraryService) removeMovieIfEmpty(ctx context.Context, id string) {
 	mov, err := l.db.GetMovie(ctx, id)
 	if err != nil {
