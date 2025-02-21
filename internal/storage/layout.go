@@ -118,7 +118,7 @@ func (l *movieLayout) make() {
 	for _, dir := range dirs {
 		_ = os.RemoveAll(path.Join(l.reprRootDir, dir))
 
-		if err := os.MkdirAll(dir, mediaPerms); err != nil {
+		if err := os.MkdirAll(path.Join(l.reprRootDir, dir), mediaPerms); err != nil {
 			logger.Warnf("Cannot create directory: %s", err)
 			continue
 		}

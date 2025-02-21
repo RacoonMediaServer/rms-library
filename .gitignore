@@ -16,3 +16,6 @@
 
 # GoLand projects
 .idea
+
+# VSCode projects
+.vscode

@@ -15,7 +15,7 @@ import (
 	"go-micro.dev/v4/logger"
 )
 
-const defaultTimeout = 2 * time.Minute
+const defaultTimeout = 5 * time.Minute
 
 func main() {
 	var query string
