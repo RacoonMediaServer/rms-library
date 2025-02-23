@@ -96,6 +96,10 @@ func (e *remoteSearchEngine) searchTorrents(ctx context.Context, mov *model.Movi
 		q.Q = &mov.Info.OriginalTitle
 		result, err = e.asyncSearch(ctx, q)
 	}
+	if err == nil && len(result) == 0 {
+		strong = false
+		result, err = e.asyncSearch(ctx, q)
+	}
 	return
 }
 
