@@ -18,6 +18,7 @@ func (s FullStrategy) Search(ctx context.Context, id string, info *rms_library.M
 
 	seasonSearcher := SeasonStrategy{Engine: s.Engine, Selector: s.Selector, SeasonNo: 1}
 	simpleSearcher := SimpleStrategy{Engine: s.Engine, Selector: s.Selector}
+	excludeSearcher := ExcludeStrategy{Engine: s.Engine, Selector: s.Selector, Exclude: seasons}
 
 	skipAtOnce := false
 	// если нужно быстро - выкачиваем сразу первый сезон
@@ -42,20 +43,11 @@ func (s FullStrategy) Search(ctx context.Context, id string, info *rms_library.M
 	}
 
 	// пробуем выкачать все, что не удалось найти
-	if info.Seasons != nil {
-		for season := uint(1); season <= uint(*info.Seasons); season++ {
-			_, found := seasons[season]
-			if found {
-				continue
-			}
-			seasonSearcher.SeasonNo = season
-			torrents, err := seasonSearcher.Search(ctx, id, info, selopts)
-			if err == nil {
-				result = append(result, torrents...)
-				detectedSeasons := GetMultipleResultsSeasons(torrents)
-				seasons.Union(detectedSeasons)
-			}
-		}
+	torrents, err := excludeSearcher.Search(ctx, id, info, selopts)
+	if err == nil {
+		result = append(result, torrents...)
+		detectedSeasons := GetMultipleResultsSeasons(torrents)
+		seasons.Union(detectedSeasons)
 	}
 
 	if len(result) == 0 {

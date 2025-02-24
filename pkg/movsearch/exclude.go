@@ -18,8 +18,15 @@ func (s ExcludeStrategy) Search(ctx context.Context, id string, info *rms_librar
 
 	seasonSearcher := SeasonStrategy{Engine: s.Engine, Selector: s.Selector, SeasonNo: 1}
 
-	// пробуем выкачать все, что не удалось найти
-	for season := uint(1); season <= uint(*info.Seasons); season++ {
+	seasonsKnown := info.Seasons != nil
+	shouldContinueIterate := func(seasonNo uint) bool {
+		if seasonsKnown {
+			return seasonNo <= uint(*info.Seasons)
+		}
+		return false
+	}
+
+	for season := uint(1); shouldContinueIterate(season); season++ {
 		_, found := s.Exclude[season]
 		if found {
 			continue
@@ -32,6 +39,8 @@ func (s ExcludeStrategy) Search(ctx context.Context, id string, info *rms_librar
 			for seasonNo := range detectedSeasons {
 				s.Exclude[seasonNo] = struct{}{}
 			}
+		} else if !seasonsKnown {
+			break
 		}
 	}
 
