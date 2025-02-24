@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/RacoonMediaServer/rms-library/internal/model"
+	"github.com/RacoonMediaServer/rms-library/pkg/movsearch"
 	"github.com/RacoonMediaServer/rms-library/pkg/selector"
 	"github.com/RacoonMediaServer/rms-media-discovery/pkg/client/models"
 	"github.com/RacoonMediaServer/rms-media-discovery/pkg/media"
@@ -23,7 +24,7 @@ func boundResults(results []*models.SearchTorrentsResult) []*models.SearchTorren
 	return results
 }
 
-func (l LibraryService) fetchTorrentFiles(ctx context.Context, searcher torrentSearchEngine, title string, results []*models.SearchTorrentsResult) []model.TorrentItem {
+func (l LibraryService) fetchTorrentFiles(ctx context.Context, searcher movsearch.SearchEngine, title string, results []*models.SearchTorrentsResult) []model.TorrentItem {
 	items := make([]model.TorrentItem, 0, len(results))
 	for _, r := range results {
 		content, err := searcher.GetTorrentFile(ctx, *r.Link)
@@ -81,14 +82,14 @@ func (l LibraryService) WatchLater(ctx context.Context, request *rms_library.Wat
 		Query:     mov.Info.Title,
 	}
 
-	searchEngine := &remoteSearchEngine{service: l.cli.Torrents, auth: l.auth}
+	searchEngine := movsearch.NewRemoteSearchEngine(l.cli.Torrents, l.auth)
 
 	item := model.WatchListItem{
 		ID:        request.Id,
 		MovieInfo: mov.Info,
 	}
 
-	result, err := searchEngine.SearchTorrents(ctx, mov, nil)
+	result, err := searchEngine.SearchTorrents(ctx, request.Id, &mov.Info, nil)
 	if err != nil {
 		logger.Errorf("Find torrents failed: %s", err)
 		return err
@@ -105,8 +106,8 @@ func (l LibraryService) WatchLater(ctx context.Context, request *rms_library.Wat
 		if mov.Info.Type == rms_library.MovieType_TvSeries && mov.Info.Seasons != nil {
 			opts.Criteria = selector.CriteriaQuality
 			item.Seasons = map[uint][]model.TorrentItem{}
-			for season := uint32(1); season <= *mov.Info.Seasons; season++ {
-				result, err = searchEngine.SearchTorrents(context.Background(), mov, &season)
+			for season := uint(1); season <= uint(*mov.Info.Seasons); season++ {
+				result, err = searchEngine.SearchTorrents(context.Background(), mov.ID, &mov.Info, &season)
 				if err != nil {
 					logger.Errorf("Find torrents failed: %s", err)
 					continue

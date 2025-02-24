@@ -7,6 +7,7 @@ import (
 	"sort"
 
 	"github.com/RacoonMediaServer/rms-library/internal/model"
+	"github.com/RacoonMediaServer/rms-library/pkg/movsearch"
 	"github.com/RacoonMediaServer/rms-library/pkg/selector"
 	"github.com/RacoonMediaServer/rms-media-discovery/pkg/media"
 	rms_library "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-library"
@@ -60,30 +61,30 @@ func (l LibraryService) DownloadAuto(ctx context.Context, request *rms_library.D
 	}
 	defer l.removeMovieIfEmpty(ctx, request.Id)
 
-	searchEngine := newRemoteSearchEngine(l.cli.Torrents, l.auth)
+	searchEngine := movsearch.NewRemoteSearchEngine(l.cli.Torrents, l.auth)
 	if request.UseWatchList {
 		searchByWatchList := newWatchListSearchEngine(l.db, l.dir)
 		searchByWatchList.SetNext(searchEngine)
 		searchEngine = searchByWatchList
 	}
 
-	var strategy searchStrategy
+	var strategy movsearch.Strategy
 	sel := l.getMovieSelector(mov)
 
 	if mov.Info.Type == rms_library.MovieType_TvSeries {
 		if request.Season == nil {
 			existsSeasons := l.dir.GetDownloadedSeasons(mov)
 			if len(existsSeasons) == 0 {
-				strategy = &fullSearchStrategy{searchEngine: searchEngine, sel: sel}
+				strategy = &movsearch.FullStrategy{Engine: searchEngine, Selector: sel}
 			} else {
-				strategy = &searchMissedStrategy{searchEngine: searchEngine, sel: sel, existing: existsSeasons}
+				strategy = &movsearch.ExcludeStrategy{Engine: searchEngine, Selector: sel, Exclude: existsSeasons}
 			}
 
 		} else {
-			strategy = &seasonSearchStrategy{searchEngine: searchEngine, sel: sel, seasonNo: *request.Season}
+			strategy = &movsearch.SeasonStrategy{Engine: searchEngine, Selector: sel, SeasonNo: uint(*request.Season)}
 		}
 	} else {
-		strategy = &simpleSearchStrategy{searchEngine: searchEngine, sel: sel}
+		strategy = &movsearch.SimpleStrategy{Engine: searchEngine, Selector: sel}
 	}
 
 	selopts := selector.Options{
@@ -96,7 +97,7 @@ func (l LibraryService) DownloadAuto(ctx context.Context, request *rms_library.D
 		selopts.Criteria = selector.CriteriaFastest
 	}
 
-	result, err := strategy.Search(ctx, mov, selopts)
+	result, err := strategy.Search(ctx, mov.ID, &mov.Info, selopts)
 	if err != nil {
 		if errors.Is(err, errAnyTorrentsNotFound) {
 			return nil
@@ -106,14 +107,14 @@ func (l LibraryService) DownloadAuto(ctx context.Context, request *rms_library.D
 	}
 
 	for _, r := range result {
-		if err = l.dm.DownloadMovie(ctx, mov, "", r.torrent, request.Faster); err != nil {
+		if err = l.dm.DownloadMovie(ctx, mov, "", r.Torrent, request.Faster); err != nil {
 			logger.Errorf("add movie to download manager failed: %s", err)
 		}
 	}
 
-	seasons := getSeasonsCount(result)
+	seasons := movsearch.GetMultipleResultsSeasons(result)
 	for s := range seasons {
-		response.Seasons = append(response.Seasons, s)
+		response.Seasons = append(response.Seasons, uint32(s))
 	}
 	sort.SliceStable(response.Seasons, func(i, j int) bool { return response.Seasons[i] < response.Seasons[j] })
 	response.Found = true
@@ -132,14 +133,19 @@ func (l LibraryService) FindTorrents(ctx context.Context, request *rms_library.F
 	}
 	defer l.removeMovieIfEmpty(ctx, request.Id)
 
-	searchEngine := newRemoteSearchEngine(l.cli.Torrents, l.auth)
+	searchEngine := movsearch.NewRemoteSearchEngine(l.cli.Torrents, l.auth)
 	if request.UseWatchList {
 		searchByWatchList := newWatchListSearchEngine(l.db, l.dir)
 		searchByWatchList.SetNext(searchEngine)
 		searchEngine = searchByWatchList
 	}
 
-	resp, err := searchEngine.SearchTorrents(ctx, mov, request.Season)
+	var season *uint
+	if request.Season != nil {
+		season = new(uint)
+		*season = uint(*request.Season)
+	}
+	resp, err := searchEngine.SearchTorrents(ctx, mov.ID, &mov.Info, season)
 	if err != nil {
 		err = fmt.Errorf("search torrents failed: %s", err)
 		logger.Error(err)
@@ -178,7 +184,7 @@ func (l LibraryService) Download(ctx context.Context, request *rms_library.Downl
 	defer l.removeMovieIfEmpty(ctx, mediaID)
 
 	searchEngine := newWatchListSearchEngine(l.db, l.dir)
-	searchEngine.SetNext(newRemoteSearchEngine(l.cli.Torrents, l.auth))
+	searchEngine.SetNext(movsearch.NewRemoteSearchEngine(l.cli.Torrents, l.auth))
 
 	data, err := searchEngine.GetTorrentFile(ctx, *torrent.Link)
 	if err != nil {
