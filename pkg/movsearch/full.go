@@ -54,5 +54,5 @@ func (s FullStrategy) Search(ctx context.Context, id string, info *rms_library.M
 		return nil, ErrAnyTorrentsNotFound
 	}
 
-	return result, nil
+	return removeDuplicatedResults(result), nil
 }
