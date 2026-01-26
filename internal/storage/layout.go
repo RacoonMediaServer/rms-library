@@ -48,7 +48,9 @@ func newMovieLayout(mov *model.Movie, downloadsDir, reprDir string) *movieLayout
 
 func (l *movieLayout) buildIndex() {
 	for _, t := range l.mov.Torrents {
-		l.addContentDirectory(t.Title)
+		if !t.Online {
+			l.addContentDirectory(t.Title)
+		}
 	}
 }
 

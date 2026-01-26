@@ -107,7 +107,7 @@ func (l LibraryService) DownloadAuto(ctx context.Context, request *rms_library.D
 	}
 
 	for _, r := range result {
-		if err = l.dm.DownloadMovie(ctx, mov, "", r.Torrent, request.Faster); err != nil {
+		if err = l.dm.DownloadMovie(ctx, mov, "", r.Torrent, request.WatchOnline); err != nil {
 			logger.Errorf("add movie to download manager failed: %s", err)
 		}
 	}
@@ -192,7 +192,7 @@ func (l LibraryService) Download(ctx context.Context, request *rms_library.Downl
 		return err
 	}
 
-	return l.dm.DownloadMovie(ctx, mov, torrent.Voice, data, false)
+	return l.dm.DownloadMovie(ctx, mov, torrent.Voice, data, request.WatchOnline)
 }
 
 func (l LibraryService) removeMovieIfEmpty(ctx context.Context, id string) {
@@ -221,7 +221,7 @@ func (l LibraryService) Upload(ctx context.Context, request *rms_library.UploadM
 	}
 	defer l.removeMovieIfEmpty(ctx, request.Id)
 
-	if err = l.dm.DownloadMovie(ctx, &mov, "", request.TorrentFile, false); err != nil {
+	if err = l.dm.DownloadMovie(ctx, &mov, "", request.TorrentFile, request.WatchOnline); err != nil {
 		logger.Errorf("Start download given file failed: %s", err)
 		return err
 	}

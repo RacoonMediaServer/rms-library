@@ -31,7 +31,7 @@ type DirectoryManager interface {
 }
 
 type DownloadsManager interface {
-	DownloadMovie(ctx context.Context, mov *model.Movie, voice string, torrent []byte, faster bool) error
+	DownloadMovie(ctx context.Context, mov *model.Movie, voice string, torrent []byte, online bool) error
 	RemoveMovie(ctx context.Context, mov *model.Movie) error
 	GetMovieByTorrent(torrentID string) (string, bool)
 	HandleTorrentEvent(kind events.Notification_Kind, torrentID string, mov *model.Movie)

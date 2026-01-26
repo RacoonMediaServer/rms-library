@@ -16,6 +16,9 @@ import (
 func (m *Manager) GetDownloadedSeasons(mov *model.Movie) map[uint]struct{} {
 	seasons := map[uint]struct{}{}
 	for _, t := range mov.Torrents {
+		if t.Online {
+			continue
+		}
 		contentPath := filepath.Join(m.dirs.Downloads, model.GetCategory(mov.Info.Type), t.Title)
 		err := filepath.Walk(contentPath,
 			func(path string, info os.FileInfo, err error) error {
