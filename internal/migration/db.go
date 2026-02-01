@@ -8,6 +8,7 @@ import (
 	"github.com/RacoonMediaServer/rms-library/internal/model"
 	rms_torrent "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-torrent"
 	"github.com/RacoonMediaServer/rms-packages/pkg/service/servicemgr"
+	"go-micro.dev/v4/logger"
 )
 
 type migratorFn func(f servicemgr.ServiceFactory) error
@@ -38,7 +39,8 @@ func updateMovieLocations(d *db.Database, cli rms_torrent.RmsTorrentService, mov
 		}
 		info, err := cli.GetTorrentInfo(context.Background(), &rms_torrent.GetTorrentInfoRequest{Id: t.ID})
 		if err != nil {
-			return fmt.Errorf("get info about torrent '%s' of '%s' failed: %w", t.ID, mov.Info.Title, err)
+			logger.Warnf("Get info about torrent '%s' of '%s' failed: %s", t.ID, mov.Info.Title, err)
+			continue
 		}
 		t.Location = info.Location
 		updateDb = true
