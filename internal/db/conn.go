@@ -15,9 +15,12 @@ type Database struct {
 	mov       *mongo.Collection
 	cache     *mongo.Collection
 	watchlist *mongo.Collection
+	meta      *mongo.Collection
 }
 
 const databaseTimeout = 40 * time.Second
+
+const Version uint = 1
 
 // Connect creates database connection
 func Connect(uri string) (*Database, error) {
@@ -41,6 +44,7 @@ func Connect(uri string) (*Database, error) {
 		mov:       lib.Collection("movies"),
 		cache:     lib.Collection("cache"),
 		watchlist: lib.Collection("watchlist"),
+		meta:      lib.Collection("metainfo"),
 	}
 
 	return db, nil

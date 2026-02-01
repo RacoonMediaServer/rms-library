@@ -7,9 +7,10 @@ import (
 )
 
 type TorrentRecord struct {
-	ID     string
-	Title  string
-	Online bool
+	ID       string
+	Title    string
+	Location string
+	Online   bool
 }
 
 // Movie represents info about downloaded movie
@@ -51,8 +52,15 @@ func (m *Movie) RemoveTorrent(id string) (TorrentRecord, bool) {
 	return TorrentRecord{}, false
 }
 
-func (m *Movie) AddTorrent(id, title string, online bool) TorrentRecord {
-	tr := TorrentRecord{ID: id, Title: title, Online: online}
-	m.Torrents = append(m.Torrents, tr)
-	return tr
+func (m *Movie) AddTorrent(record TorrentRecord) {
+	m.Torrents = append(m.Torrents, record)
+}
+
+func (m *Movie) GetTorrent(id string) *TorrentRecord {
+	for i := range m.Torrents {
+		if m.Torrents[i].ID == id {
+			return &m.Torrents[i]
+		}
+	}
+	return nil
 }

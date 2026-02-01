@@ -6,6 +6,7 @@ import (
 	"github.com/RacoonMediaServer/rms-library/internal/config"
 	"github.com/RacoonMediaServer/rms-library/internal/db"
 	"github.com/RacoonMediaServer/rms-library/internal/downloads"
+	"github.com/RacoonMediaServer/rms-library/internal/migration"
 	"github.com/RacoonMediaServer/rms-library/internal/service/movies"
 	"github.com/RacoonMediaServer/rms-library/internal/storage"
 	rms_library "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-library"
@@ -66,6 +67,14 @@ func main() {
 
 	// фабрика коннекторов к другим сервисам
 	f := servicemgr.NewServiceFactory(service)
+
+	m := migration.Migrator{
+		CurrentVersion: Version,
+		Database:       database,
+	}
+	if err = m.Run(f); err != nil {
+		logger.Fatalf("Migration failed: %s", err)
+	}
 
 	// создаем структуру директорий
 	dirManager, err := storage.NewManager(cfg.Directories)

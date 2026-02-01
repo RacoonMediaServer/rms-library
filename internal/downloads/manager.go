@@ -102,7 +102,15 @@ func (m *Manager) DownloadMovie(ctx context.Context, mov *model.Movie, voice str
 	if err != nil {
 		return fmt.Errorf("add torrent failed: %w", err)
 	}
-	torrentRecord := mov.AddTorrent(resp.Id, resp.Title, online)
+
+	torrentRecord := model.TorrentRecord{
+		ID:       resp.Id,
+		Title:    resp.Title,
+		Online:   online,
+		Location: resp.Location,
+	}
+	mov.AddTorrent(torrentRecord)
+
 	logger.Infof("Torrent added, id = %s, %d files", resp.Id, len(resp.Files))
 
 	mov.SetVoice(voice)
@@ -158,8 +166,7 @@ func (m *Manager) HandleTorrentEvent(kind events.Notification_Kind, torrentID st
 	switch kind {
 	case events.Notification_DownloadComplete:
 		if m.waitTorrentReady {
-			logger.Infof("Movie '%s' download complete. creating layout", mov.Info.Title)
-			m.dm.CreateMovieLayout(mov)
+			m.torrentIsReady(torrentID, mov)
 		}
 
 	case events.Notification_TorrentRemoved:
@@ -216,4 +223,23 @@ func (m *Manager) GetMovieStoreSize(ctx context.Context, mov *model.Movie) uint6
 		}
 	}
 	return size
+}
+
+func (m *Manager) torrentIsReady(torrentId string, mov *model.Movie) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	info, err := m.cli.GetTorrentInfo(ctx, &rms_torrent.GetTorrentInfoRequest{Id: torrentId})
+	if err == nil {
+		tor := mov.GetTorrent(torrentId)
+		if tor != nil {
+			tor.Location = info.Location
+			if err = m.db.UpdateMovieContent(ctx, mov); err != nil {
+				logger.Warnf("Update torrent location failed: %s", err)
+			}
+		}
+	}
+
+	logger.Infof("Movie '%s' download complete. creating layout", mov.Info.Title)
+	m.dm.CreateMovieLayout(mov)
 }
