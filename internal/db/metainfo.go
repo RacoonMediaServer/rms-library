@@ -40,6 +40,6 @@ func (d Database) SetMetaInfo(ctx context.Context, mi model.MetaInfo) error {
 	opts := options.Replace().SetUpsert(true)
 	filter := bson.D{{"_id", metaInfoKey}}
 
-	_, err := d.cache.ReplaceOne(ctx, filter, &mi, opts)
+	_, err := d.meta.ReplaceOne(ctx, filter, mi, opts)
 	return err
 }
