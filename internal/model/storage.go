@@ -6,7 +6,7 @@ const MoviesCategory = "rms_movies"
 const TvSeriesCategory = "rms_tv"
 const ClipCategory = "rms_clip"
 
-func GetCategory(t rms_library.MovieType) string {
+func GetVideoCategory(t rms_library.MovieType) string {
 	switch t {
 	case rms_library.MovieType_Film:
 		return MoviesCategory

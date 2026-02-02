@@ -24,7 +24,7 @@ func boundResults(results []*models.SearchTorrentsResult) []*models.SearchTorren
 	return results
 }
 
-func (l LibraryService) fetchTorrentFiles(ctx context.Context, searcher movsearch.SearchEngine, title string, results []*models.SearchTorrentsResult) []model.TorrentItem {
+func (l MoviesService) fetchTorrentFiles(ctx context.Context, searcher movsearch.SearchEngine, title string, results []*models.SearchTorrentsResult) []model.TorrentItem {
 	items := make([]model.TorrentItem, 0, len(results))
 	for _, r := range results {
 		content, err := searcher.GetTorrentFile(ctx, *r.Link)
@@ -48,7 +48,7 @@ func (l LibraryService) fetchTorrentFiles(ctx context.Context, searcher movsearc
 }
 
 // GetWatchList implements rms_library.MoviesHandler.
-func (l *LibraryService) GetWatchList(ctx context.Context, request *rms_library.GetMoviesRequest, response *rms_library.GetMoviesResponse) error {
+func (l *MoviesService) GetWatchList(ctx context.Context, request *rms_library.GetMoviesRequest, response *rms_library.GetMoviesResponse) error {
 	list, err := l.db.GetWatchList(ctx, request.Type)
 	if err != nil {
 		logger.Errorf("Get watch list failed: %s", err)
@@ -66,7 +66,7 @@ func (l *LibraryService) GetWatchList(ctx context.Context, request *rms_library.
 	return nil
 }
 
-func (l LibraryService) WatchLater(ctx context.Context, request *rms_library.WatchLaterRequest, empty *emptypb.Empty) error {
+func (l MoviesService) WatchLater(ctx context.Context, request *rms_library.WatchLaterRequest, empty *emptypb.Empty) error {
 	logger.Infof("WatchLater: %s", request.Id)
 	mov, err := l.getOrCreateMovie(ctx, request.Id, false)
 	if err != nil {

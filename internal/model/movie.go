@@ -1,37 +1,30 @@
 package model
 
 import (
-	"time"
-
+	"github.com/RacoonMediaServer/rms-media-discovery/pkg/client/models"
 	rms_library "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-library"
 )
 
-type TorrentRecord struct {
-	ID       string
-	Title    string
-	Location string
-	Online   bool
+type TorrentSearchResult struct {
+	models.SearchMoviesResult
+	ID string
 }
 
 // Movie represents info about downloaded movie
 type Movie struct {
-	// Global ID of movie or series (related to themoviedb.org)
-	ID string `bson:"_id,omitempty"`
+	ListItem `bson:",inline"`
 
 	// Info about movie/series
 	Info rms_library.MovieInfo
 
-	// ID of associated torrents
-	Torrents []TorrentRecord
-
-	// LastAvailableCheck is a time when check of available new seasons has been occurred
-	LastAvailableCheck time.Time
-
-	// AvailableSeasons contains season which available on trackers
-	AvailableSeasons []uint
-
 	// Voice contains downloaded voice for series seasons
 	Voice string
+
+	// ArchivedTorrents contains all search results
+	ArchivedTorrents []TorrentSearchResult
+
+	// ArchivedSeasons contains all seasons search results
+	ArchivedSeasons map[uint]TorrentSearchResult
 }
 
 func (m *Movie) SetVoice(voice string) {

@@ -17,7 +17,7 @@ import (
 
 var errAnyTorrentsNotFound = errors.New("any torrents not found")
 
-func (l LibraryService) getOrCreateMovie(ctx context.Context, id string, canUseWatchList bool) (*model.Movie, error) {
+func (l MoviesService) getOrCreateMovie(ctx context.Context, id string, canUseWatchList bool) (*model.Movie, error) {
 	// 1. Вытаскиваем из кеша инфу о медиа
 	movInfo, err := l.db.GetMovieInfo(ctx, id)
 	if err != nil {
@@ -51,7 +51,7 @@ func (l LibraryService) getOrCreateMovie(ctx context.Context, id string, canUseW
 	return mov, nil
 }
 
-func (l LibraryService) DownloadAuto(ctx context.Context, request *rms_library.DownloadMovieAutoRequest, response *rms_library.DownloadMovieAutoResponse) error {
+func (l MoviesService) DownloadAuto(ctx context.Context, request *rms_library.DownloadMovieAutoRequest, response *rms_library.DownloadMovieAutoResponse) error {
 	logger.Infof("DownloadMovieAuto: %s", request.Id)
 	mov, err := l.getOrCreateMovie(ctx, request.Id, request.UseWatchList)
 	if err != nil {
@@ -122,7 +122,7 @@ func (l LibraryService) DownloadAuto(ctx context.Context, request *rms_library.D
 	return nil
 }
 
-func (l LibraryService) FindTorrents(ctx context.Context, request *rms_library.FindMovieTorrentsRequest, response *rms_library.FindTorrentsResponse) error {
+func (l MoviesService) FindTorrents(ctx context.Context, request *rms_library.FindMovieTorrentsRequest, response *rms_library.FindTorrentsResponse) error {
 	logger.Infof("FindMovieTorrents: %s", request.Id)
 
 	mov, err := l.getOrCreateMovie(ctx, request.Id, request.UseWatchList)
@@ -165,7 +165,7 @@ func (l LibraryService) FindTorrents(ctx context.Context, request *rms_library.F
 	return nil
 }
 
-func (l LibraryService) Download(ctx context.Context, request *rms_library.DownloadTorrentRequest, empty *emptypb.Empty) error {
+func (l MoviesService) Download(ctx context.Context, request *rms_library.DownloadTorrentRequest, empty *emptypb.Empty) error {
 	logger.Infof("DownloadTorrent: %s", request.TorrentId)
 	mediaID, ok := l.torrentToMovieID[request.TorrentId]
 	if !ok {
@@ -193,38 +193,4 @@ func (l LibraryService) Download(ctx context.Context, request *rms_library.Downl
 	}
 
 	return l.dm.DownloadMovie(ctx, mov, torrent.Voice, data, request.WatchOnline)
-}
-
-func (l LibraryService) removeMovieIfEmpty(ctx context.Context, id string) {
-	mov, err := l.db.GetMovie(ctx, id)
-	if err != nil {
-		return
-	}
-	if len(mov.Torrents) == 0 {
-		logger.Debugf("Removing empty movie record: %s [ %s ]", id, mov.Info.Title)
-		if err = l.db.DeleteMovie(ctx, id); err != nil {
-			logger.Warnf("Remove empty movie '%s' failed: %s", id, err)
-		}
-	}
-}
-
-func (l LibraryService) Upload(ctx context.Context, request *rms_library.UploadMovieRequest, empty *emptypb.Empty) error {
-	mov := model.Movie{
-		ID:   request.Id,
-		Info: *request.Info,
-	}
-
-	err := l.db.GetOrCreateMovie(ctx, &mov)
-	if err != nil {
-		logger.Errorf("Store movie info failed: %s", err)
-		return err
-	}
-	defer l.removeMovieIfEmpty(ctx, request.Id)
-
-	if err = l.dm.DownloadMovie(ctx, &mov, "", request.TorrentFile, request.WatchOnline); err != nil {
-		logger.Errorf("Start download given file failed: %s", err)
-		return err
-	}
-
-	return nil
 }

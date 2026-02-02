@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/RacoonMediaServer/rms-library/internal/model"
 	"github.com/RacoonMediaServer/rms-media-discovery/pkg/client/client/movies"
 	"github.com/RacoonMediaServer/rms-media-discovery/pkg/client/models"
 	rms_library "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-library"
@@ -35,7 +36,7 @@ func convertMovieInfo(in *models.SearchMoviesResult) *rms_library.MovieInfo {
 	return out
 }
 
-func (l LibraryService) Search(ctx context.Context, request *rms_library.SearchRequest, response *rms_library.SearchMovieResponse) error {
+func (l MoviesService) Search(ctx context.Context, request *rms_library.MoviesSearchRequest, response *rms_library.MoviesSearchResponse) error {
 	logger.Infof("SearchMovie: %s", request.Text)
 
 	limit := int64(request.Limit)
@@ -56,23 +57,14 @@ func (l LibraryService) Search(ctx context.Context, request *rms_library.SearchR
 	response.Movies = make([]*rms_library.FoundMovie, 0, len(resp.Payload.Results))
 	for _, r := range resp.Payload.Results {
 		mov := &rms_library.FoundMovie{
-			Id:                *r.ID,
-			Info:              convertMovieInfo(r),
-			SeasonsDownloaded: make([]uint32, 0),
+			Id:   model.MakeID(*r.ID, rms_library.ContentType_TypeMovies).String(),
+			Info: convertMovieInfo(r),
 		}
-
-		existingMovie, _ := l.db.GetMovie(ctx, *r.ID)
 
 		if err = l.db.PutMovieInfo(ctx, *r.ID, mov.Info); err != nil {
 			logger.Warnf("Save movie info to cache failed: %s", err)
 		}
 
-		if existingMovie != nil {
-			seasons := l.dir.GetDownloadedSeasons(existingMovie)
-			for no := range seasons {
-				mov.SeasonsDownloaded = append(mov.SeasonsDownloaded, uint32(no))
-			}
-		}
 		response.Movies = append(response.Movies, mov)
 	}
 

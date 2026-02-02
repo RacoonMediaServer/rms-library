@@ -5,7 +5,7 @@ import (
 	"github.com/RacoonMediaServer/rms-library/pkg/selector"
 )
 
-func (l LibraryService) getMovieSelector(mov *model.Movie) selector.MediaSelector {
+func (l MoviesService) getMovieSelector(mov *model.Movie) selector.MediaSelector {
 	// TODO: вынести в настройки
 
 	settings := selector.Settings{

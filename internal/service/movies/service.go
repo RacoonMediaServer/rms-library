@@ -16,8 +16,8 @@ func init() {
 
 const searchTorrentsLimit uint = 10
 
-// LibraryService is a service API handler
-type LibraryService struct {
+// MoviesService is a service API handler
+type MoviesService struct {
 	f                servicemgr.ServiceFactory
 	auth             runtime.ClientAuthInfoWriter
 	db               Database
@@ -26,6 +26,7 @@ type LibraryService struct {
 	dm               DownloadsManager
 	torrentToMovieID map[string]string
 	torrentToResult  map[string]*models.SearchTorrentsResult
+	sched            Scheduler
 }
 
 // Settings holds all dependencies of service
@@ -36,15 +37,16 @@ type Settings struct {
 	DownloadsManager DownloadsManager
 	Remote           config.Remote
 	Device           string
+	Scheduler        Scheduler
 }
 
-func NewService(settings Settings) *LibraryService {
+func NewService(settings Settings) *MoviesService {
 	// создаем клиента к rms-media-discovery
 	tr := httptransport.New(settings.Remote.Host, settings.Remote.Path, []string{settings.Remote.Scheme})
 	auth := httptransport.APIKeyAuth("X-Token", "header", settings.Device)
 	discoveryClient := client.New(tr, strfmt.Default)
 
-	l := &LibraryService{
+	l := &MoviesService{
 		f:                settings.ServiceFactory,
 		auth:             auth,
 		db:               settings.Database,
@@ -53,9 +55,8 @@ func NewService(settings Settings) *LibraryService {
 		dm:               settings.DownloadsManager,
 		torrentToMovieID: map[string]string{},
 		torrentToResult:  map[string]*models.SearchTorrentsResult{},
+		sched:            settings.Scheduler,
 	}
-
-	go l.checkAvailableUpdates()
 
 	return l
 }

@@ -15,18 +15,3 @@ const (
 	// FileTypeMediaSupply means subtitles, audio tracks and other
 	FileTypeMediaSupply
 )
-
-// File represents media entry
-type File struct {
-	// Relative Path on data storage
-	Path string
-
-	// Type defines significance of File
-	Type FileType
-
-	// Title is a human-readable name of episode/track other
-	Title string
-
-	// No means episode/track number, can be -1
-	No int
-}
