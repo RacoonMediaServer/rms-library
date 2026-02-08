@@ -6,8 +6,8 @@ import (
 )
 
 type TorrentSearchResult struct {
-	models.SearchMoviesResult
-	ID string
+	models.SearchTorrentsResult
+	Path string
 }
 
 // Movie represents info about downloaded movie
@@ -24,7 +24,7 @@ type Movie struct {
 	ArchivedTorrents []TorrentSearchResult
 
 	// ArchivedSeasons contains all seasons search results
-	ArchivedSeasons map[uint]TorrentSearchResult
+	ArchivedSeasons map[uint][]TorrentSearchResult
 }
 
 func (m *Movie) SetVoice(voice string) {

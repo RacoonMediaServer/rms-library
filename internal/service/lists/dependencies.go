@@ -23,5 +23,5 @@ type Scheduler interface {
 }
 
 type DownloadManager interface {
-	RemoveTorrents(ctx context.Context, torrents []model.TorrentRecord)
+	DropTorrents(ctx context.Context, torrents []model.TorrentRecord)
 }

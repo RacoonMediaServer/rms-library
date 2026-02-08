@@ -10,51 +10,51 @@ import (
 	rms_library "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-library"
 )
 
-type watchListSearchEngine struct {
+type archiveSearchEngine struct {
 	next movsearch.SearchEngine
 
 	db  Database
 	dir DirectoryManager
 }
 
-func newWatchListSearchEngine(db Database, dir DirectoryManager) movsearch.SearchEngine {
-	return &watchListSearchEngine{
+func newArchiveSearchEngine(db Database, dir DirectoryManager) movsearch.SearchEngine {
+	return &archiveSearchEngine{
 		db:  db,
 		dir: dir,
 	}
 }
 
-func (e *watchListSearchEngine) convertTorrents(torrents []model.TorrentItem) []*models.SearchTorrentsResult {
+func (e *archiveSearchEngine) convertTorrents(torrents []model.TorrentSearchResult) []*models.SearchTorrentsResult {
 	result := make([]*models.SearchTorrentsResult, len(torrents))
 	for i, t := range torrents {
 		result[i] = &t.SearchTorrentsResult
 		t.Link = new(string)
-		*t.Link = t.TorrentContent
+		*t.Link = t.Path
 	}
 	return result
 }
 
-func (e *watchListSearchEngine) searchTorrents(ctx context.Context, id string, info *rms_library.MovieInfo, season *uint) ([]*models.SearchTorrentsResult, error) {
-	item, err := e.db.GetWatchListItem(ctx, id)
+func (e *archiveSearchEngine) searchTorrents(ctx context.Context, id string, info *rms_library.MovieInfo, season *uint) ([]*models.SearchTorrentsResult, error) {
+	mov, err := e.db.GetMovie(ctx, model.ID(id))
 	if err != nil {
 		return nil, err
 	}
-	if item == nil {
+	if mov == nil {
 		return nil, errors.New("not found")
 	}
 
 	if info.Type == rms_library.MovieType_Film || season == nil {
-		return e.convertTorrents(item.Torrents), nil
+		return e.convertTorrents(mov.ArchivedTorrents), nil
 	}
 
-	return e.convertTorrents(item.Seasons[*season]), nil
+	return e.convertTorrents(mov.ArchivedSeasons[*season]), nil
 }
 
-func (e *watchListSearchEngine) SetNext(next movsearch.SearchEngine) {
+func (e *archiveSearchEngine) SetNext(next movsearch.SearchEngine) {
 	e.next = next
 }
 
-func (e *watchListSearchEngine) SearchTorrents(ctx context.Context, id string, info *rms_library.MovieInfo, season *uint) (result []*models.SearchTorrentsResult, err error) {
+func (e *archiveSearchEngine) SearchTorrents(ctx context.Context, id string, info *rms_library.MovieInfo, season *uint) (result []*models.SearchTorrentsResult, err error) {
 	result, err = e.searchTorrents(ctx, id, info, season)
 	if err != nil && e.next != nil {
 		result, err = e.next.SearchTorrents(ctx, id, info, season)
@@ -66,7 +66,7 @@ func (e *watchListSearchEngine) SearchTorrents(ctx context.Context, id string, i
 	return
 }
 
-func (e *watchListSearchEngine) GetTorrentFile(ctx context.Context, link string) ([]byte, error) {
+func (e *archiveSearchEngine) GetTorrentFile(ctx context.Context, link string) ([]byte, error) {
 	data, err := e.dir.LoadWatchListTorrent(link)
 	if err != nil && e.next != nil {
 		return e.next.GetTorrentFile(ctx, link)

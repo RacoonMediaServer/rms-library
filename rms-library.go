@@ -6,7 +6,9 @@ import (
 	"github.com/RacoonMediaServer/rms-library/internal/config"
 	"github.com/RacoonMediaServer/rms-library/internal/db"
 	"github.com/RacoonMediaServer/rms-library/internal/downloads"
+	"github.com/RacoonMediaServer/rms-library/internal/lock"
 	"github.com/RacoonMediaServer/rms-library/internal/migration"
+	"github.com/RacoonMediaServer/rms-library/internal/schedule"
 	"github.com/RacoonMediaServer/rms-library/internal/service/lists"
 	"github.com/RacoonMediaServer/rms-library/internal/service/movies"
 	"github.com/RacoonMediaServer/rms-library/internal/storage"
@@ -89,6 +91,9 @@ func main() {
 		logger.Fatalf("Cannot initialize downloads manager: %s", err)
 	}
 
+	lk := lock.NewLocker()
+	sched := schedule.New()
+
 	settings := movies.Settings{
 		ServiceFactory:   f,
 		Database:         database,
@@ -96,18 +101,18 @@ func main() {
 		DownloadsManager: downloadManager,
 		Remote:           cfg.Remote,
 		Device:           cfg.Device,
+		Scheduler:        sched,
+		Locker:           lk,
 	}
 
 	moviesService := movies.NewService(settings)
 
-	// подписываемся на события от торрентов
-	if err = moviesService.Subscribe(service.Server()); err != nil {
-		logger.Fatalf("Subscribe failed: %s", err)
-	}
-
 	listsService := &lists.Service{
-		Database: database,
-		Movies:   moviesService,
+		Database:  database,
+		Movies:    moviesService,
+		Scheduler: sched,
+		Downloads: downloadManager,
+		Locker:    lk,
 	}
 
 	//регистрируем хендлеры

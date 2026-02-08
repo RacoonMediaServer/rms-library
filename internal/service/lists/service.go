@@ -3,7 +3,9 @@ package lists
 import (
 	"context"
 	"errors"
+	"time"
 
+	"github.com/RacoonMediaServer/rms-library/internal/lock"
 	"github.com/RacoonMediaServer/rms-library/internal/model"
 	rms_library "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-library"
 	"go-micro.dev/v4/logger"
@@ -15,7 +17,10 @@ type Service struct {
 	Movies    Movies
 	Scheduler Scheduler
 	Downloads DownloadManager
+	Locker    lock.Locker
 }
+
+const lockTimeout = 20 * time.Second
 
 // Add implements rms_library.ListsHandler.
 func (s *Service) Add(ctx context.Context, req *rms_library.ListsAddRequest, resp *emptypb.Empty) error {
@@ -36,7 +41,16 @@ func (s *Service) Add(ctx context.Context, req *rms_library.ListsAddRequest, res
 
 // Delete implements rms_library.ListsHandler.
 func (s *Service) Delete(ctx context.Context, req *rms_library.ListsDeleteRequest, resp *emptypb.Empty) error {
-	item, err := s.Database.GetListItem(ctx, model.ID(req.Id))
+	id := model.ID(req.Id)
+
+	l, err := lock.TimedLock(ctx, s.Locker, id, lockTimeout)
+	if err != nil {
+		logger.Errorf("Acquire lock failed for '%s': %s", id, err)
+		return err
+	}
+	defer l.Unlock()
+
+	item, err := s.Database.GetListItem(ctx, id)
 	if err != nil {
 		logger.Errorf("Cannot get '%s' item", req.Id, err)
 		return err
@@ -44,13 +58,13 @@ func (s *Service) Delete(ctx context.Context, req *rms_library.ListsDeleteReques
 	if item == nil {
 		return errors.New("not found")
 	}
-	if err = s.Database.DeleteListItem(ctx, model.ID(req.Id)); err != nil {
+	if err = s.Database.DeleteListItem(ctx, id); err != nil {
 		logger.Errorf("Delete '%s'from db failed: %s", req.Id, err)
 		return err
 	}
 
 	s.Scheduler.Cancel(req.Id)
-	s.Downloads.RemoveTorrents(ctx, item.Torrents)
+	s.Downloads.DropTorrents(ctx, item.Torrents)
 
 	return nil
 }
@@ -75,7 +89,16 @@ func (s *Service) List(ctx context.Context, req *rms_library.ListsListRequest, r
 
 // Move implements rms_library.ListsHandler.
 func (s *Service) Move(ctx context.Context, req *rms_library.ListsMoveRequest, resp *emptypb.Empty) error {
-	item, err := s.Database.GetListItem(ctx, model.ID(req.Id))
+	id := model.ID(req.Id)
+
+	l, err := lock.TimedLock(ctx, s.Locker, id, lockTimeout)
+	if err != nil {
+		logger.Errorf("Acquire lock failed for '%s': %s", id, err)
+		return err
+	}
+	defer l.Unlock()
+
+	item, err := s.Database.GetListItem(ctx, id)
 	if err != nil {
 		logger.Errorf("Cannot get '%s' item", req.Id, err)
 		return err
@@ -84,12 +107,17 @@ func (s *Service) Move(ctx context.Context, req *rms_library.ListsMoveRequest, r
 		return errors.New("not found")
 	}
 
-	if err = s.Database.MoveListItem(ctx, model.ID(req.Id), req.List); err != nil {
+	if req.List == item.List {
+		logger.Warnf("Ignore moving item '%s' because item has already presented in this list", req.Id)
+		return nil
+	}
+
+	if err = s.Database.MoveListItem(ctx, id, req.List); err != nil {
 		logger.Errorf("Update item in db failed: %s", err)
 		return err
 	}
 
-	s.Scheduler.Cancel(req.Id)
+	// Watchers will do updating content
 
 	return nil
 }

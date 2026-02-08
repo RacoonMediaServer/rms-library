@@ -117,6 +117,7 @@ func (s *Scheduler) run(t *Task) {
 
 	case OpResultRetryAfter:
 		t.scheduledAt = time.Now().Add(result.After)
+		t.dur = result.After
 	}
 
 	s.mu.Lock()

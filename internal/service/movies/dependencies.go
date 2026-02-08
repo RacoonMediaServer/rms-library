@@ -17,19 +17,23 @@ type Database interface {
 	// persistent
 	AddMovie(ctx context.Context, mov *model.Movie) error
 	GetMovie(ctx context.Context, id model.ID) (*model.Movie, error)
+	UpdateMovieArchiveContent(ctx context.Context, mov *model.Movie) error
 }
 
 type DirectoryManager interface {
 	GetDownloadedSeasons(mov *model.Movie) map[uint]struct{}
-	StoreWatchListTorrent(itemTitle string, torrent []byte) (id model.ID, err error)
+	StoreWatchListTorrent(itemTitle string, torrent []byte) (path string, err error)
 	LoadWatchListTorrent(contentPath string) ([]byte, error)
 }
 
 type DownloadsManager interface {
 	Download(ctx context.Context, item *model.ListItem, category string, torrent []byte) error
+	RemoveTorrent(ctx context.Context, item *model.ListItem, torrentId string) error
+	DropMissedTorrents(ctx context.Context, item *model.ListItem) error
+	UpdateTorrentInfo(ctx context.Context, item *model.ListItem) error
 }
 
 type Scheduler interface {
 	Add(t *schedule.Task) bool
-	Cencel(groupId string)
+	Cancel(groupId string)
 }

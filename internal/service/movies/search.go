@@ -56,12 +56,13 @@ func (l MoviesService) Search(ctx context.Context, request *rms_library.MoviesSe
 
 	response.Movies = make([]*rms_library.FoundMovie, 0, len(resp.Payload.Results))
 	for _, r := range resp.Payload.Results {
+		id := model.MakeID(*r.ID, rms_library.ContentType_TypeMovies)
 		mov := &rms_library.FoundMovie{
-			Id:   model.MakeID(*r.ID, rms_library.ContentType_TypeMovies).String(),
+			Id:   id.String(),
 			Info: convertMovieInfo(r),
 		}
 
-		if err = l.db.PutMovieInfo(ctx, *r.ID, mov.Info); err != nil {
+		if err = l.db.PutMovieInfo(ctx, id, mov.Info); err != nil {
 			logger.Warnf("Save movie info to cache failed: %s", err)
 		}
 

@@ -2,6 +2,7 @@ package downloads
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/RacoonMediaServer/rms-library/internal/model"
@@ -85,14 +86,119 @@ func (m *Manager) Download(ctx context.Context, item *model.ListItem, category s
 	return nil
 }
 
-func (m *Manager) RemoveTorrents(ctx context.Context, item *model.ListItem) error {
-	total := []model.TorrentRecord{}
-	for _, t := range item.Torrents {
+func (m *Manager) DropTorrents(ctx context.Context, torrents []model.TorrentRecord) {
+	for _, t := range torrents {
 		cli := m.client(t.Online)
 		if _, err := cli.RemoveTorrent(ctx, &rms_torrent.RemoveTorrentRequest{Id: t.ID}); err != nil {
 			logger.Warnf("Remove torrent failed: %s", err)
-			total = append(total, t)
+		}
+	}
+}
+
+func (m *Manager) RemoveTorrent(ctx context.Context, item *model.ListItem, torrentId string) error {
+	var target *model.TorrentRecord
+	var updatedTorrents []model.TorrentRecord
+	for i := range item.Torrents {
+		if item.Torrents[i].ID == torrentId {
+			target = &item.Torrents[i]
+			updatedTorrents = append(item.Torrents[:i], item.Torrents[i+1:]...)
+			break
 		}
 	}
 
+	if target == nil {
+		return errors.New("torrent not found")
+	}
+
+	cli := m.client(target.Online)
+	if _, err := cli.RemoveTorrent(ctx, &rms_torrent.RemoveTorrentRequest{Id: target.ID}); err != nil {
+		return err
+	}
+
+	if err := m.db.UpdateContent(ctx, item.ID, updatedTorrents); err != nil {
+		return err
+	}
+
+	item.Torrents = updatedTorrents
+	return nil
+}
+
+func (m *Manager) getTorrentsMap(ctx context.Context, online bool) (map[string]*rms_torrent.TorrentInfo, error) {
+	cli := m.client(online)
+
+	resp, err := cli.GetTorrents(ctx, &rms_torrent.GetTorrentsRequest{IncludeDoneTorrents: true})
+	if err != nil {
+		return nil, err
+	}
+
+	result := map[string]*rms_torrent.TorrentInfo{}
+	for _, t := range resp.Torrents {
+		result[t.Id] = t
+	}
+
+	return result, nil
+}
+
+func (m *Manager) DropMissedTorrents(ctx context.Context, item *model.ListItem) error {
+	offlineTorrents, err := m.getTorrentsMap(ctx, false)
+	if err != nil {
+		return err
+	}
+
+	onlineTorrents, err := m.getTorrentsMap(ctx, true)
+	if err != nil {
+		return err
+	}
+
+	resultTorrents := make([]model.TorrentRecord, 0, len(item.Torrents))
+	changed := false
+	for _, t := range item.Torrents {
+		torrents := offlineTorrents
+		if t.Online {
+			torrents = onlineTorrents
+		}
+		_, found := torrents[t.ID]
+		if !found {
+			changed = true
+		} else {
+			resultTorrents = append(resultTorrents, t)
+		}
+	}
+
+	if !changed {
+		return nil
+	}
+
+	if err = m.db.UpdateContent(ctx, item.ID, resultTorrents); err != nil {
+		return err
+	}
+
+	item.Torrents = resultTorrents
+	return nil
+}
+
+func (m *Manager) UpdateTorrentInfo(ctx context.Context, item *model.ListItem) error {
+	changed := false
+	for i := range item.Torrents {
+		t := &item.Torrents[i]
+		cli := m.client(t.Online)
+		info, err := cli.GetTorrentInfo(ctx, &rms_torrent.GetTorrentInfoRequest{Id: t.ID})
+		if err != nil {
+			return fmt.Errorf("get torrent info about %s failed: %w", t.ID, err)
+		}
+		if info.Location != t.Location {
+			t.Location = info.Location
+			changed = true
+		}
+		if !t.Online && info.SizeMB != t.Size {
+			t.Size = info.SizeMB
+			changed = true
+		}
+	}
+
+	if !changed {
+		return nil
+	}
+
+	return m.db.UpdateContent(ctx, item.ID, item.Torrents)
 }

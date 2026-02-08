@@ -34,24 +34,24 @@ func (d Database) GetListItems(ctx context.Context, list rms_library.List, conte
 	return
 }
 
-func (d Database) MoveListItem(ctx context.Context, id string, newList rms_library.List) error {
+func (d Database) MoveListItem(ctx context.Context, id model.ID, newList rms_library.List) error {
 	ctx, cancel := context.WithTimeout(ctx, databaseTimeout)
 	defer cancel()
 
 	// TODO: different collections
 
-	filter := bson.D{{"_id", id}}
+	filter := bson.D{{"_id", id.String()}}
 	update := bson.D{{"$set", bson.D{{"list", newList}}}}
 	_, err := d.mov.UpdateOne(ctx, filter, update)
 	return err
 }
 
-func (d Database) DeleteListItem(ctx context.Context, id string) error {
+func (d Database) DeleteListItem(ctx context.Context, id model.ID) error {
 	ctx, cancel := context.WithTimeout(ctx, databaseTimeout)
 	defer cancel()
 
 	// TODO: different collections
-	_, err := d.mov.DeleteOne(ctx, bson.D{{Key: "_id", Value: id}})
+	_, err := d.mov.DeleteOne(ctx, bson.D{{Key: "_id", Value: id.String()}})
 	return err
 }
 

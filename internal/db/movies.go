@@ -73,11 +73,11 @@ func (d Database) UpdateAvailableContent(ctx context.Context, mov *model.Movie) 
 	return nil
 }
 
-func (d Database) GetMovie(ctx context.Context, id string) (*model.Movie, error) {
+func (d Database) GetMovie(ctx context.Context, id model.ID) (*model.Movie, error) {
 	ctx, cancel := context.WithTimeout(ctx, databaseTimeout)
 	defer cancel()
 
-	result := d.mov.FindOne(ctx, bson.D{{Key: "_id", Value: id}})
+	result := d.mov.FindOne(ctx, bson.D{{Key: "_id", Value: id.String()}})
 	if errors.Is(result.Err(), mongo.ErrNoDocuments) {
 		return nil, nil
 	}
@@ -117,10 +117,26 @@ func (d Database) SearchMovies(ctx context.Context, movieType *rms_library.Movie
 	return results, nil
 }
 
-func (d Database) DeleteMovie(ctx context.Context, id string) error {
+func (d Database) DeleteMovie(ctx context.Context, id model.ID) error {
 	ctx, cancel := context.WithTimeout(ctx, databaseTimeout)
 	defer cancel()
 
 	_, err := d.mov.DeleteOne(ctx, bson.D{{Key: "_id", Value: id}})
 	return err
+}
+
+func (d Database) UpdateMovieArchiveContent(ctx context.Context, mov *model.Movie) error {
+	ctx, cancel := context.WithTimeout(ctx, databaseTimeout)
+	defer cancel()
+
+	filter := bson.D{{"_id", mov.ID.String()}}
+	update := bson.D{{"$set", bson.D{{"archivedtorrents", mov.ArchivedTorrents}, {"archivedseasons", mov.ArchivedSeasons}}}}
+	_, err := d.mov.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return err
+	}
+
+	// TODO: different collections
+
+	return nil
 }
