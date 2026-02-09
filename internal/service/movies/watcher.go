@@ -2,6 +2,7 @@ package movies
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -51,6 +52,9 @@ func (l MoviesService) asyncWatch(log logger.Logger, ctx context.Context, id mod
 	mov, err := l.db.GetMovie(ctx, id)
 	if err != nil {
 		return fmt.Errorf("load movie from database failed: %w", err)
+	}
+	if mov == nil {
+		return errors.New("movie not found")
 	}
 
 	// проверяем различные проблемы и рассинхрон

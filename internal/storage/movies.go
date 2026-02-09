@@ -16,10 +16,7 @@ import (
 func (m *Manager) GetDownloadedSeasons(mov *model.Movie) map[uint]struct{} {
 	seasons := map[uint]struct{}{}
 	for _, t := range mov.Torrents {
-		if t.Online {
-			continue
-		}
-		contentPath := filepath.Join(m.dirs.Downloads, model.GetCategory(mov.Info.Type), t.Title)
+		contentPath := t.Location
 		err := filepath.Walk(contentPath,
 			func(path string, info os.FileInfo, err error) error {
 				if err != nil {
@@ -96,4 +93,27 @@ func (m *Manager) DeleteMovieLayout(mov *model.Movie) {
 			_ = os.RemoveAll(dir)
 		}
 	}
+}
+
+func (m *Manager) GetTorrentSeasons(t *model.TorrentRecord) map[uint]struct{} {
+	seasons := map[uint]struct{}{}
+	err := filepath.Walk(t.Location,
+		func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			if info.IsDir() {
+				return nil
+			}
+
+			result := analysis.Analyze(path)
+			if result.Season != 0 {
+				seasons[result.Season] = struct{}{}
+			}
+			return nil
+		})
+	if err != nil {
+		logger.Warnf("Walk through %s failed: %s", t.Location, err)
+	}
+	return seasons
 }

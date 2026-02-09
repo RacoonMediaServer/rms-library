@@ -53,14 +53,14 @@ func (q queue) pop(now time.Time) *Task {
 	cur = q.o.Front()
 	if cur != nil {
 		t := cur.Value.(*Task)
-		q.t.Remove(cur)
+		q.o.Remove(cur)
 		return t
 	}
 
 	cur = q.i.Front()
 	if cur != nil {
 		t := cur.Value.(*Task)
-		q.t.Remove(cur)
+		q.i.Remove(cur)
 		return t
 	}
 
@@ -71,11 +71,11 @@ func (q queue) scheduleTask(t *Task) {
 	for cur := q.t.Front(); cur != nil; cur = cur.Next() {
 		curTask := cur.Value.(*Task)
 		if curTask.scheduledAt.After(t.scheduledAt) {
-			q.t.InsertBefore(curTask, &list.Element{Value: t})
+			q.t.InsertBefore(t, cur)
 			return
 		}
 	}
-	q.t.PushBack(q)
+	q.t.PushBack(t)
 }
 
 func (q queue) removeByGroup(group string) {

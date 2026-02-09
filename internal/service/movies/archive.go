@@ -26,7 +26,7 @@ func (l MoviesService) fetchTorrentFiles(ctx context.Context, searcher movsearch
 			logger.Warnf("Download torrent failed: %s", err)
 			continue
 		}
-		pathToTorrentFile, err := l.dir.StoreWatchListTorrent(title, content)
+		pathToTorrentFile, err := l.dir.StoreArchiveTorrent(title, content)
 		if err != nil {
 			logger.Warnf("Save to watchlist failed: %s", err)
 			continue

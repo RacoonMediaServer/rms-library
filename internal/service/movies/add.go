@@ -28,9 +28,10 @@ func (l MoviesService) Add(ctx context.Context, id model.ID, list rms_library.Li
 
 	mov := model.Movie{
 		ListItem: model.ListItem{
-			ID:    id,
-			Title: info.Title,
-			List:  list,
+			ID:       id,
+			Title:    info.Title,
+			List:     list,
+			Category: model.GetVideoCategory(info.Type),
 		},
 		Info: *info,
 	}
@@ -142,7 +143,7 @@ func (l MoviesService) searchAndDownload(log logger.Logger, ctx context.Context,
 
 	if mov.List != rms_library.List_Archive {
 		for _, r := range result {
-			if err = l.dm.Download(ctx, &mov.ListItem, model.GetVideoCategory(mov.Info.Type), r.Torrent); err != nil {
+			if err = l.dm.Download(ctx, &mov.ListItem, r.Torrent); err != nil {
 				log.Logf(logger.ErrorLevel, "Download failed: %s", err)
 			}
 		}

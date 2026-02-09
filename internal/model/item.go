@@ -14,6 +14,9 @@ type ListItem struct {
 	// List which movie belongs to
 	List rms_library.List
 
+	// Category for download
+	Category string
+
 	// ID of associated torrents
 	Torrents []TorrentRecord
 }
@@ -24,4 +27,14 @@ type TorrentRecord struct {
 	Location string
 	Size     uint64
 	Online   bool
+}
+
+func (li *ListItem) Size() uint64 {
+	var result uint64
+	for _, t := range li.Torrents {
+		if !t.Online {
+			result += t.Size
+		}
+	}
+	return result
 }

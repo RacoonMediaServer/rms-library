@@ -48,16 +48,25 @@ func newMovieLayout(mov *model.Movie, downloadsDir, reprDir string) *movieLayout
 
 func (l *movieLayout) buildIndex() {
 	for _, t := range l.mov.Torrents {
-		if !t.Online {
-			l.addContentDirectory(t.Title)
-		}
+		l.addContentDirectory(t.Title, &t)
 	}
 }
 
-func (l *movieLayout) addContentDirectory(dir string) {
-	fullDir := filepath.Join(l.downloadsRootDir, model.GetCategory(l.mov.Info.Type), dir)
+func (l *movieLayout) addContentDirectory(title string, t *model.TorrentRecord) {
+	fullDir := t.Location
+
+	fi, err := os.Stat(t.Location)
+	if err != nil {
+		logger.Warnf("Stat %s failed: %s", t.Location, err)
+		return
+	}
+
+	if !fi.IsDir() {
+		fullDir = filepath.Base(t.Location)
+	}
+
 	files := []dirEntry{}
-	err := filepath.Walk(fullDir, func(path string, info fs.FileInfo, err error) error {
+	err = filepath.Walk(fullDir, func(path string, info fs.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -66,7 +75,7 @@ func (l *movieLayout) addContentDirectory(dir string) {
 		}
 
 		relpath := ""
-		relpath, err = filepath.Rel(filepath.Join(l.downloadsRootDir, model.GetCategory(l.mov.Info.Type)), path)
+		relpath, err = filepath.Rel(filepath.Base(fullDir), path)
 		if err != nil {
 			return err
 		}
@@ -89,7 +98,7 @@ func (l *movieLayout) addContentDirectory(dir string) {
 		}
 		return nil
 	})
-	l.rawFolders[dir] = files
+	l.rawFolders[title] = files
 
 	if err != nil {
 		if os.IsNotExist(err) {

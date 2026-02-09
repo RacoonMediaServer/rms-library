@@ -4,11 +4,14 @@ import (
 	"context"
 	"sync"
 	"time"
+
+	"go-micro.dev/v4/logger"
 )
 
 const maxNotifications = 1000
 const tickInterval = 10 * time.Second
 const maxTaskTimeout = 10 * time.Minute
+const maxRetryInterval = 20 * time.Minute
 
 type Scheduler struct {
 	ctx    context.Context
@@ -49,6 +52,7 @@ func (s *Scheduler) process() {
 		case <-s.notifies:
 			s.processQueue()
 		case <-ticker.C:
+			s.debugPrint()
 			s.processQueue()
 		case <-s.ctx.Done():
 			return
@@ -87,6 +91,8 @@ func (s *Scheduler) Add(t *Task) bool {
 		return false
 	}
 
+	logger.Debugf("Task added")
+
 	s.mu.Lock()
 	s.q.push(t)
 	s.mu.Unlock()
@@ -113,6 +119,9 @@ func (s *Scheduler) run(t *Task) {
 			t.dur = time.Second
 		}
 		t.dur *= 2
+		if t.dur > maxRetryInterval {
+			t.dur = maxRetryInterval
+		}
 		t.scheduledAt = time.Now().Add(t.dur)
 
 	case OpResultRetryAfter:
@@ -127,6 +136,13 @@ func (s *Scheduler) run(t *Task) {
 	s.running = nil
 	s.cancelRunning = false
 	s.mu.Unlock()
+}
+
+func (s *Scheduler) debugPrint() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	logger.Debugf("t: %d, o: %d, i: %d", s.q.t.Len(), s.q.o.Len(), s.q.i.Len())
 }
 
 func (s *Scheduler) Stop() {

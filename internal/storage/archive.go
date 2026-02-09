@@ -7,7 +7,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func (m *Manager) StoreWatchListTorrent(itemTitle string, torrent []byte) (id string, err error) {
+func (m *Manager) StoreArchiveTorrent(itemTitle string, torrent []byte) (id string, err error) {
 	itemTitle = escape(itemTitle)
 	fileName := uuid.NewString() + ".torrent"
 	id = filepath.Join(itemTitle, fileName)
@@ -18,6 +18,6 @@ func (m *Manager) StoreWatchListTorrent(itemTitle string, torrent []byte) (id st
 	return
 }
 
-func (m *Manager) LoadWatchListTorrent(contentPath string) ([]byte, error) {
+func (m *Manager) LoadArchiveTorrent(contentPath string) ([]byte, error) {
 	return os.ReadFile(filepath.Join(m.dirs.WatchList, contentPath))
 }

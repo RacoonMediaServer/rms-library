@@ -24,7 +24,7 @@ func (id ID) ContentType() rms_library.ContentType {
 }
 
 func MakeID(id string, contentType rms_library.ContentType) ID {
-	return ID(id + contentTypePrefix[contentType])
+	return ID(contentTypePrefix[contentType] + id)
 }
 
 func (id ID) String() string {

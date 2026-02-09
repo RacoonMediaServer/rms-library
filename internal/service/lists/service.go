@@ -25,7 +25,14 @@ const lockTimeout = 20 * time.Second
 // Add implements rms_library.ListsHandler.
 func (s *Service) Add(ctx context.Context, req *rms_library.ListsAddRequest, resp *emptypb.Empty) error {
 	id := model.ID(req.Id)
-	var err error
+
+	l, err := lock.TimedLock(ctx, s.Locker, id, lockTimeout)
+	if err != nil {
+		logger.Errorf("Acquire lock failed for '%s': %s", id, err)
+		return err
+	}
+	defer l.Unlock()
+
 	switch id.ContentType() {
 	case rms_library.ContentType_TypeMovies:
 		err = s.Movies.Add(ctx, id, req.List)
@@ -81,7 +88,7 @@ func (s *Service) List(ctx context.Context, req *rms_library.ListsListRequest, r
 			Id:          string(items[i].ID),
 			Title:       items[i].Title,
 			ContentType: items[i].ID.ContentType(),
-			Size:        0, // TODO: calculate
+			Size:        items[i].Size(),
 		}
 	}
 	return nil

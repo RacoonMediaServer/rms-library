@@ -15,19 +15,22 @@ type Database interface {
 	GetMovieInfo(ctx context.Context, id model.ID) (*rms_library.MovieInfo, error)
 
 	// persistent
+	SearchMovies(ctx context.Context, movieType *rms_library.MovieType) ([]*model.Movie, error)
 	AddMovie(ctx context.Context, mov *model.Movie) error
 	GetMovie(ctx context.Context, id model.ID) (*model.Movie, error)
 	UpdateMovieArchiveContent(ctx context.Context, mov *model.Movie) error
 }
 
 type DirectoryManager interface {
+	CreateMovieLayout(mov *model.Movie)
 	GetDownloadedSeasons(mov *model.Movie) map[uint]struct{}
-	StoreWatchListTorrent(itemTitle string, torrent []byte) (path string, err error)
-	LoadWatchListTorrent(contentPath string) ([]byte, error)
+	GetTorrentSeasons(t *model.TorrentRecord) map[uint]struct{}
+	StoreArchiveTorrent(itemTitle string, torrent []byte) (path string, err error)
+	LoadArchiveTorrent(contentPath string) ([]byte, error)
 }
 
 type DownloadsManager interface {
-	Download(ctx context.Context, item *model.ListItem, category string, torrent []byte) error
+	Download(ctx context.Context, item *model.ListItem, torrent []byte) error
 	RemoveTorrent(ctx context.Context, item *model.ListItem, torrentId string) error
 	DropMissedTorrents(ctx context.Context, item *model.ListItem) error
 	UpdateTorrentInfo(ctx context.Context, item *model.ListItem) error

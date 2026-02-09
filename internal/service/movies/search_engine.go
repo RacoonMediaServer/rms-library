@@ -67,7 +67,7 @@ func (e *archiveSearchEngine) SearchTorrents(ctx context.Context, id string, inf
 }
 
 func (e *archiveSearchEngine) GetTorrentFile(ctx context.Context, link string) ([]byte, error) {
-	data, err := e.dir.LoadWatchListTorrent(link)
+	data, err := e.dir.LoadArchiveTorrent(link)
 	if err != nil && e.next != nil {
 		return e.next.GetTorrentFile(ctx, link)
 	}

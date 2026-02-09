@@ -43,23 +43,13 @@ func (m *Manager) client(onlinePlayback bool) rms_torrent.RmsTorrentService {
 	return m.cli
 }
 
-// Initialize loads content and builds downloads index
-func (m *Manager) Initialize() error {
-	// создаем директории для фильмов
-	// if err = m.dm.CreateMoviesLayout(movies); err != nil {
-	// 	return err
-	// }
-
-	return nil
-}
-
-func (m *Manager) Download(ctx context.Context, item *model.ListItem, category string, torrent []byte) error {
+func (m *Manager) Download(ctx context.Context, item *model.ListItem, torrent []byte) error {
 	cli := m.client(item.List == rms_library.List_WatchList)
 
 	req := rms_torrent.DownloadRequest{
 		What:        torrent,
 		Description: item.Title,
-		Category:    category,
+		Category:    item.Category,
 	}
 
 	// ставим в очередь на скачивание торрент

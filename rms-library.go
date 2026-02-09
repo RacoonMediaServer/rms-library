@@ -11,6 +11,7 @@ import (
 	"github.com/RacoonMediaServer/rms-library/internal/schedule"
 	"github.com/RacoonMediaServer/rms-library/internal/service/lists"
 	"github.com/RacoonMediaServer/rms-library/internal/service/movies"
+	"github.com/RacoonMediaServer/rms-library/internal/service/torrents"
 	"github.com/RacoonMediaServer/rms-library/internal/storage"
 	rms_library "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-library"
 	"github.com/RacoonMediaServer/rms-packages/pkg/service/servicemgr"
@@ -87,9 +88,6 @@ func main() {
 
 	// создаем менеджер закачек
 	downloadManager := downloads.NewManager(f.NewTorrent(false), f.NewTorrent(true), database, dirManager, cfg.WaitTorrentReady)
-	if err = downloadManager.Initialize(); err != nil {
-		logger.Fatalf("Cannot initialize downloads manager: %s", err)
-	}
 
 	lk := lock.NewLocker()
 	sched := schedule.New()
@@ -106,6 +104,9 @@ func main() {
 	}
 
 	moviesService := movies.NewService(settings)
+	if err = moviesService.Initialize(); err != nil {
+		logger.Fatalf("Cannot initialize movies service: %s", err)
+	}
 
 	listsService := &lists.Service{
 		Database:  database,
@@ -115,6 +116,13 @@ func main() {
 		Locker:    lk,
 	}
 
+	torrentsService := &torrents.Service{
+		Locker:    lk,
+		Database:  database,
+		Downloads: downloadManager,
+		Movies:    moviesService,
+	}
+
 	//регистрируем хендлеры
 	if err = rms_library.RegisterMoviesHandler(service.Server(), moviesService); err != nil {
 		logger.Fatalf("Register service failed: %s", err)
@@ -122,6 +130,10 @@ func main() {
 
 	if err = rms_library.RegisterListsHandler(service.Server(), listsService); err != nil {
 		logger.Fatalf("Register lists service failed: %s", err)
+	}
+
+	if err = rms_library.RegisterTorrentsHandler(service.Server(), torrentsService); err != nil {
+		logger.Fatalf("Register torrents service failed: %s", err)
 	}
 
 	if err = service.Run(); err != nil {
