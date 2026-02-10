@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/RacoonMediaServer/rms-library/internal/config"
 	"github.com/RacoonMediaServer/rms-library/internal/db"
 	"github.com/RacoonMediaServer/rms-library/internal/model"
 	"github.com/RacoonMediaServer/rms-packages/pkg/service/servicemgr"
@@ -13,6 +14,7 @@ import (
 type Migrator struct {
 	CurrentVersion string
 	Database       *db.Database
+	Config         config.Configuration
 
 	mi *model.MetaInfo
 }
@@ -63,5 +65,6 @@ func (m *Migrator) migrateDatabase(f servicemgr.ServiceFactory) error {
 func (m *Migrator) getMigrations() []migratorFn {
 	return []migratorFn{
 		m.migrateDatabaseV0ToV1,
+		m.migrateDatabaseV1ToV2,
 	}
 }

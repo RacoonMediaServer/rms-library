@@ -19,7 +19,7 @@ type Database struct {
 
 const databaseTimeout = 40 * time.Second
 
-const Version uint = 1
+const Version uint = 2
 
 // Connect creates database connection
 func Connect(uri string) (*Database, error) {

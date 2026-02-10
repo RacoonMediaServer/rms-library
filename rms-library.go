@@ -76,6 +76,7 @@ func main() {
 	m := migration.Migrator{
 		CurrentVersion: Version,
 		Database:       database,
+		Config:         cfg,
 	}
 	if err = m.Run(f); err != nil {
 		logger.Fatalf("Migration failed: %s", err)
