@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/RacoonMediaServer/rms-library/internal/lock"
@@ -12,11 +13,13 @@ import (
 	"github.com/RacoonMediaServer/rms-library/pkg/movsearch"
 	"github.com/RacoonMediaServer/rms-library/pkg/selector"
 	"github.com/RacoonMediaServer/rms-media-discovery/pkg/media"
+	"github.com/RacoonMediaServer/rms-packages/pkg/events"
 	rms_library "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-library"
 	"go-micro.dev/v4/logger"
 )
 
 const watchInterval = 2 * time.Minute
+const notifyTimeout = 15 * time.Second
 
 var errAnyTorrentsNotFound = errors.New("any torrents not found")
 
@@ -142,13 +145,13 @@ func (l MoviesService) searchAndDownload(log logger.Logger, ctx context.Context,
 		return errors.New("nothing found")
 	}
 
-	if mov.List != rms_library.List_Archive {
-		for _, r := range result {
-			if err = l.dm.Download(ctx, &mov.ListItem, r.Torrent); err != nil {
-				log.Logf(logger.ErrorLevel, "Download failed: %s", err)
-			}
+	for _, r := range result {
+		if err = l.dm.Download(ctx, &mov.ListItem, r.Torrent); err != nil {
+			log.Logf(logger.ErrorLevel, "Download failed: %s", err)
 		}
 	}
+
+	l.notifyUser(log, ctx, mov, getSeasons(result))
 	return nil
 }
 
@@ -197,6 +200,42 @@ func (l MoviesService) searchAndSave(log logger.Logger, ctx context.Context, mov
 		return err
 	}
 
+	totalSeasons := []uint32{}
+	for no := range mov.ArchivedSeasons {
+		totalSeasons = append(totalSeasons, uint32(no))
+	}
+	sort.SliceStable(totalSeasons, func(i, j int) bool { return totalSeasons[i] < totalSeasons[j] })
+	l.notifyUser(log, ctx, mov, totalSeasons)
+
 	logger.Infof("Item '%s' [ %s ] saved to archive", mov.Info.Title, mov.ID)
 	return nil
+}
+
+func (l MoviesService) notifyUser(log logger.Logger, ctx context.Context, mov *model.Movie, seasons []uint32) {
+	nCtx, nCancel := context.WithTimeout(ctx, notifyTimeout)
+	defer nCancel()
+
+	size := uint32(mov.Size())
+	event := events.Notification{
+		Sender:    "rms-library",
+		Kind:      events.Notification_ContentFound,
+		MediaID:   (*string)(&mov.ID),
+		ItemTitle: &mov.Title,
+		SizeMB:    &size,
+		Seasons:   seasons,
+	}
+
+	if err := l.pub.Publish(nCtx, &event); err != nil {
+		log.Logf(logger.WarnLevel, "Send notification about movie failed: %s", err)
+	}
+}
+
+func getSeasons(result []movsearch.Result) []uint32 {
+	foundSeasons := movsearch.GetMultipleResultsSeasons(result)
+	seasons := make([]uint32, 0, len(foundSeasons))
+	for s := range seasons {
+		seasons = append(seasons, uint32(s))
+	}
+	sort.SliceStable(seasons, func(i, j int) bool { return seasons[i] < seasons[j] })
+	return seasons
 }

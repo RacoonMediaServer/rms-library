@@ -15,6 +15,7 @@ import (
 	"github.com/go-openapi/runtime"
 	httptransport "github.com/go-openapi/runtime/client"
 	"github.com/go-openapi/strfmt"
+	"go-micro.dev/v4"
 	"go-micro.dev/v4/logger"
 )
 
@@ -30,6 +31,7 @@ type MoviesService struct {
 	dm    DownloadsManager
 	sched Scheduler
 	lk    lock.Locker
+	pub   micro.Event
 }
 
 // Get implements rms_library.MoviesHandler.
@@ -53,6 +55,7 @@ type Settings struct {
 	Device           string
 	Scheduler        Scheduler
 	Locker           lock.Locker
+	Publisher        micro.Event
 }
 
 func NewService(settings Settings) *MoviesService {
@@ -70,9 +73,8 @@ func NewService(settings Settings) *MoviesService {
 		dm:    settings.DownloadsManager,
 		sched: settings.Scheduler,
 		lk:    settings.Locker,
+		pub:   settings.Publisher,
 	}
-
-	// TODO: start watchers for all items
 
 	return l
 }

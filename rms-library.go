@@ -13,6 +13,7 @@ import (
 	"github.com/RacoonMediaServer/rms-library/internal/service/movies"
 	"github.com/RacoonMediaServer/rms-library/internal/service/torrents"
 	"github.com/RacoonMediaServer/rms-library/internal/storage"
+	"github.com/RacoonMediaServer/rms-packages/pkg/pubsub"
 	rms_library "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-library"
 	"github.com/RacoonMediaServer/rms-packages/pkg/service/servicemgr"
 	"github.com/urfave/cli/v2"
@@ -101,6 +102,7 @@ func main() {
 		Device:           cfg.Device,
 		Scheduler:        sched,
 		Locker:           lk,
+		Publisher:        pubsub.NewPublisher(service),
 	}
 
 	moviesService := movies.NewService(settings)
