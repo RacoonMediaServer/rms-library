@@ -1,12 +1,17 @@
 package model
 
 import (
+	"time"
+
 	rms_library "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-library"
 )
 
 type ListItem struct {
 	// Global ID of movie or series (related to themoviedb.org)
 	ID ID `bson:"_id,omitempty"`
+
+	// When item added
+	CreatedAt time.Time
 
 	// Title is the item title
 	Title string
