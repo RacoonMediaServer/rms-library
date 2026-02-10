@@ -11,17 +11,25 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func (d Database) GetListItems(ctx context.Context, list rms_library.List, contentType *rms_library.ContentType) (results []*model.ListItem, err error) {
+func (d Database) GetListItems(ctx context.Context, list *rms_library.List, contentType *rms_library.ContentType, sort *rms_library.Sort, p *rms_library.Pagination) (results []*model.ListItem, err error) {
 	ctx, cancel := context.WithTimeout(ctx, databaseTimeout)
 	defer cancel()
 
 	filter := bson.D{}
-	filter = bson.D{{"list", int(list)}}
+	if list != nil {
+		filter = append(filter, bson.E{Key: "list", Value: int(*list)})
+	}
+	if contentType != nil {
+		filter = append(filter, bson.E{Key: "contenttype", Value: int(*contentType)})
+	}
 
-	opts := options.Find().SetSort(bson.D{{"title", 1}})
+	opts := options.Find().SetSort(getSort(sort))
+	if p != nil {
+		opts.SetSkip(int64(p.Offset)).SetLimit(int64(p.Count))
+	}
 
 	var cur *mongo.Cursor
-	cur, err = d.mov.Find(ctx, filter, opts)
+	cur, err = d.media.Find(ctx, filter, opts)
 	if err != nil {
 		return
 	}
@@ -30,7 +38,6 @@ func (d Database) GetListItems(ctx context.Context, list rms_library.List, conte
 		return
 	}
 
-	// TODO: different collections
 	return
 }
 
@@ -38,11 +45,9 @@ func (d Database) MoveListItem(ctx context.Context, id model.ID, newList rms_lib
 	ctx, cancel := context.WithTimeout(ctx, databaseTimeout)
 	defer cancel()
 
-	// TODO: different collections
-
 	filter := bson.D{{"_id", id.String()}}
 	update := bson.D{{"$set", bson.D{{"list", newList}}}}
-	_, err := d.mov.UpdateOne(ctx, filter, update)
+	_, err := d.media.UpdateOne(ctx, filter, update)
 	return err
 }
 
@@ -50,8 +55,7 @@ func (d Database) DeleteListItem(ctx context.Context, id model.ID) error {
 	ctx, cancel := context.WithTimeout(ctx, databaseTimeout)
 	defer cancel()
 
-	// TODO: different collections
-	_, err := d.mov.DeleteOne(ctx, bson.D{{Key: "_id", Value: id.String()}})
+	_, err := d.media.DeleteOne(ctx, bson.D{{Key: "_id", Value: id.String()}})
 	return err
 }
 
@@ -59,9 +63,7 @@ func (d Database) GetListItem(ctx context.Context, id model.ID) (*model.ListItem
 	ctx, cancel := context.WithTimeout(ctx, databaseTimeout)
 	defer cancel()
 
-	// TODO: different collections
-
-	result := d.mov.FindOne(ctx, bson.D{{Key: "_id", Value: id.String()}})
+	result := d.media.FindOne(ctx, bson.D{{Key: "_id", Value: id.String()}})
 	if errors.Is(result.Err(), mongo.ErrNoDocuments) {
 		return nil, nil
 	}
@@ -84,12 +86,10 @@ func (d Database) UpdateContent(ctx context.Context, id model.ID, torrents []mod
 
 	filter := bson.D{{"_id", id.String()}}
 	update := bson.D{{"$set", bson.D{{"torrents", torrents}}}}
-	_, err := d.mov.UpdateOne(ctx, filter, update)
+	_, err := d.media.UpdateOne(ctx, filter, update)
 	if err != nil {
 		return err
 	}
-
-	// TODO: different collections
 
 	return nil
 }

@@ -8,7 +8,7 @@ import (
 )
 
 type Database interface {
-	GetListItems(ctx context.Context, list rms_library.List, contentType *rms_library.ContentType) (results []*model.ListItem, err error)
+	GetListItems(ctx context.Context, list *rms_library.List, contentType *rms_library.ContentType, sort *rms_library.Sort, p *rms_library.Pagination) (results []*model.ListItem, err error)
 	MoveListItem(ctx context.Context, id model.ID, newList rms_library.List) error
 	GetListItem(ctx context.Context, id model.ID) (*model.ListItem, error)
 	DeleteListItem(ctx context.Context, id model.ID) error

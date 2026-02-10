@@ -28,10 +28,11 @@ func (l MoviesService) Add(ctx context.Context, id model.ID, list rms_library.Li
 
 	mov := model.Movie{
 		ListItem: model.ListItem{
-			ID:       id,
-			Title:    info.Title,
-			List:     list,
-			Category: model.GetVideoCategory(info.Type),
+			ID:          id,
+			Title:       info.Title,
+			List:        list,
+			ContentType: rms_library.ContentType_TypeMovies,
+			Category:    model.GetVideoCategory(info.Type),
 		},
 		Info: *info,
 	}

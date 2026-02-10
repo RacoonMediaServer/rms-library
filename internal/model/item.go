@@ -14,8 +14,11 @@ type ListItem struct {
 	// List which movie belongs to
 	List rms_library.List
 
-	// Category for download
+	// Category for downloads
 	Category string
+
+	// Media content type
+	ContentType rms_library.ContentType
 
 	// ID of associated torrents
 	Torrents []TorrentRecord

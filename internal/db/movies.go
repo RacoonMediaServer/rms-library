@@ -16,9 +16,10 @@ func (d Database) GetOrCreateMovie(ctx context.Context, mov *model.Movie) error 
 	ctx, cancel := context.WithTimeout(ctx, databaseTimeout)
 	defer cancel()
 
-	result := d.mov.FindOne(ctx, bson.D{{Key: "_id", Value: mov.ID}})
+	filter := bson.D{{Key: "_id", Value: mov.ID}, {Key: "contenttype", Value: int(rms_library.ContentType_TypeMovies)}}
+	result := d.media.FindOne(ctx, filter)
 	if errors.Is(result.Err(), mongo.ErrNoDocuments) {
-		_, err := d.mov.InsertOne(ctx, mov)
+		_, err := d.media.InsertOne(ctx, mov)
 		if err != nil {
 			return fmt.Errorf("insert movie failed: %w", err)
 		}
@@ -41,7 +42,7 @@ func (d Database) AddMovie(ctx context.Context, mov *model.Movie) error {
 	ctx, cancel := context.WithTimeout(ctx, databaseTimeout)
 	defer cancel()
 
-	_, err := d.mov.InsertOne(ctx, mov)
+	_, err := d.media.InsertOne(ctx, mov)
 	return err
 }
 
@@ -49,9 +50,9 @@ func (d Database) UpdateMovieContent(ctx context.Context, mov *model.Movie) erro
 	ctx, cancel := context.WithTimeout(ctx, databaseTimeout)
 	defer cancel()
 
-	filter := bson.D{{"_id", mov.ID}}
+	filter := bson.D{{Key: "_id", Value: mov.ID}, {Key: "contenttype", Value: int(rms_library.ContentType_TypeMovies)}}
 	update := bson.D{{"$set", bson.D{{"torrents", mov.Torrents}, {"voice", mov.Voice}}}}
-	_, err := d.mov.UpdateOne(ctx, filter, update)
+	_, err := d.media.UpdateOne(ctx, filter, update)
 	if err != nil {
 		return err
 	}
@@ -63,7 +64,8 @@ func (d Database) GetMovie(ctx context.Context, id model.ID) (*model.Movie, erro
 	ctx, cancel := context.WithTimeout(ctx, databaseTimeout)
 	defer cancel()
 
-	result := d.mov.FindOne(ctx, bson.D{{Key: "_id", Value: id.String()}})
+	filter := bson.D{{Key: "_id", Value: id.String()}, {Key: "contenttype", Value: int(rms_library.ContentType_TypeMovies)}}
+	result := d.media.FindOne(ctx, filter)
 	if errors.Is(result.Err(), mongo.ErrNoDocuments) {
 		return nil, nil
 	}
@@ -84,13 +86,13 @@ func (d Database) SearchMovies(ctx context.Context, movieType *rms_library.Movie
 	ctx, cancel := context.WithTimeout(ctx, databaseTimeout)
 	defer cancel()
 
-	filter := bson.D{}
+	filter := bson.D{{Key: "contenttype", Value: int(rms_library.ContentType_TypeMovies)}}
 	if movieType != nil {
 		filter = bson.D{{"info.type", int(*movieType)}}
 	}
 	opts := options.Find().SetSort(bson.D{{"info.title", 1}})
 
-	cur, err := d.mov.Find(ctx, filter, opts)
+	cur, err := d.media.Find(ctx, filter, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -107,7 +109,7 @@ func (d Database) DeleteMovie(ctx context.Context, id model.ID) error {
 	ctx, cancel := context.WithTimeout(ctx, databaseTimeout)
 	defer cancel()
 
-	_, err := d.mov.DeleteOne(ctx, bson.D{{Key: "_id", Value: id}})
+	_, err := d.media.DeleteOne(ctx, bson.D{{Key: "_id", Value: id}})
 	return err
 }
 
@@ -115,14 +117,12 @@ func (d Database) UpdateMovieArchiveContent(ctx context.Context, mov *model.Movi
 	ctx, cancel := context.WithTimeout(ctx, databaseTimeout)
 	defer cancel()
 
-	filter := bson.D{{"_id", mov.ID.String()}}
+	filter := bson.D{{Key: "_id", Value: mov.ID.String()}, {Key: "contenttype", Value: int(rms_library.ContentType_TypeMovies)}}
 	update := bson.D{{"$set", bson.D{{"archivedtorrents", mov.ArchivedTorrents}, {"archivedseasons", mov.ArchivedSeasons}}}}
-	_, err := d.mov.UpdateOne(ctx, filter, update)
+	_, err := d.media.UpdateOne(ctx, filter, update)
 	if err != nil {
 		return err
 	}
-
-	// TODO: different collections
 
 	return nil
 }

@@ -10,12 +10,11 @@ import (
 )
 
 type Database struct {
-	cli       *mongo.Client
-	db        *mongo.Database
-	mov       *mongo.Collection
-	cache     *mongo.Collection
-	watchlist *mongo.Collection
-	meta      *mongo.Collection
+	cli   *mongo.Client
+	db    *mongo.Database
+	media *mongo.Collection
+	cache *mongo.Collection
+	meta  *mongo.Collection
 }
 
 const databaseTimeout = 40 * time.Second
@@ -39,12 +38,11 @@ func Connect(uri string) (*Database, error) {
 	lib := cli.Database("library")
 
 	db := &Database{
-		cli:       cli,
-		db:        lib,
-		mov:       lib.Collection("movies"),
-		cache:     lib.Collection("cache"),
-		watchlist: lib.Collection("watchlist"),
-		meta:      lib.Collection("metainfo"),
+		cli:   cli,
+		db:    lib,
+		media: lib.Collection("media"),
+		cache: lib.Collection("cache"),
+		meta:  lib.Collection("metainfo"),
 	}
 
 	return db, nil

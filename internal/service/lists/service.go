@@ -78,7 +78,7 @@ func (s *Service) Delete(ctx context.Context, req *rms_library.ListsDeleteReques
 
 // List implements rms_library.ListsHandler.
 func (s *Service) List(ctx context.Context, req *rms_library.ListsListRequest, resp *rms_library.ListsListResponse) error {
-	items, err := s.Database.GetListItems(ctx, req.List, req.ContentType)
+	items, err := s.Database.GetListItems(ctx, &req.List, req.ContentType, req.Sort, req.Pagination)
 	if err != nil {
 		logger.Errorf("List items failed: %s", err)
 	}
