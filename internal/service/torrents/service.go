@@ -49,10 +49,10 @@ func (s *Service) getItem(ctx context.Context, id model.ID) (*model.ListItem, lo
 
 // Add implements rms_library.TorrentsHandler.
 func (s *Service) Add(ctx context.Context, req *rms_library.TorrentsAddRequest, resp *emptypb.Empty) error {
-	if req.NewTorrentId == "" || len(req.TorrentFile) == 0 {
+	if req.Link == nil || len(req.TorrentFile) == 0 {
 		return errors.New("no torrent content presented")
 	}
-	if req.NewTorrentId != "" && len(req.TorrentFile) != 0 {
+	if req.Link != nil && len(req.TorrentFile) != 0 {
 		return errors.New("ambigous content presented")
 	}
 
@@ -65,7 +65,7 @@ func (s *Service) Add(ctx context.Context, req *rms_library.TorrentsAddRequest, 
 	}
 	defer lk.Unlock()
 
-	if err = s.download(ctx, item, &req.NewTorrentId, req.TorrentFile); err != nil {
+	if err = s.download(ctx, item, req.Link, req.TorrentFile); err != nil {
 		logger.Errorf("Add torrent to '%s' [ %s ] failed: %s", item.Title, item.ID, err)
 		return err
 	}
@@ -94,18 +94,26 @@ func (s *Service) Delete(ctx context.Context, req *rms_library.TorrentsDeleteReq
 	return nil
 }
 
-// FindAlternatives implements rms_library.TorrentsHandler.
-func (s *Service) FindAlternatives(ctx context.Context, req *rms_library.TorrentsFindAlternativesRequest, resp *rms_library.TorrentsFindAlternativesResponse) error {
+func getSeasonPtr(season *uint32) *uint {
+	if season == nil {
+		return nil
+	}
+	tmpVal := uint(*season)
+	return &tmpVal
+}
+
+// Find implements rms_library.TorrentsHandler.
+func (s *Service) Find(ctx context.Context, req *rms_library.TorrentsFindRequest, resp *rms_library.TorrentsFindResponse) error {
 	id := model.ID(req.Id)
 	var err error
 	switch id.ContentType() {
 	case rms_library.ContentType_TypeMovies:
-		resp.Torrents, err = s.Movies.FindTorrents(ctx, id, &req.TorrentId)
+		resp.Torrents, err = s.Movies.FindTorrents(ctx, id, getSeasonPtr(req.Season))
 	default:
 		err = errors.New("unsupported content type")
 	}
 	if err != nil {
-		logger.Errorf("Find torrent alternatives for %s of %s failed: %s", req.TorrentId, req.Id, err)
+		logger.Errorf("Find torrents for %s failed: %s", req.Id, err)
 	}
 	return err
 }
@@ -129,29 +137,5 @@ func (s *Service) List(ctx context.Context, req *rms_library.TorrentsListRequest
 		resp.Torrents = append(resp.Torrents, &tConverted)
 	}
 
-	return nil
-}
-
-// Replace implements rms_library.TorrentsHandler.
-func (s *Service) Replace(ctx context.Context, req *rms_library.TorrentsReplaceRequest, resp *emptypb.Empty) error {
-	id := model.ID(req.Id)
-
-	item, lk, err := s.getItem(ctx, id)
-	if err != nil {
-		logger.Errorf("Get item %s failed: %s", id, err)
-		return err
-	}
-	defer lk.Unlock()
-
-	if err = s.download(ctx, item, req.NewTorrentId, req.TorrentFile); err != nil {
-		logger.Errorf("Add torrent to '%s' [ %s ] failed: %s", item.Title, item.ID, err)
-		return err
-	}
-
-	if err = s.Downloads.RemoveTorrent(ctx, item, req.TorrentId); err != nil {
-		logger.Errorf("Remove torrent %s of '%s' [ %s ] failed: %s", req.TorrentId, item.Title, item.ID, err)
-	}
-
-	logger.Infof("Torrent %s of '%s' [ %s ] replaced", req.TorrentId, item.Title, item.ID)
 	return nil
 }

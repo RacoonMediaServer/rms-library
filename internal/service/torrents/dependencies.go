@@ -18,5 +18,5 @@ type DownloadsManager interface {
 
 type Movies interface {
 	GetTorrentContent(ctx context.Context, torrentId string) ([]byte, error)
-	FindTorrents(ctx context.Context, id model.ID, torrentId *string) ([]*rms_library.Torrent, error)
+	FindTorrents(ctx context.Context, id model.ID, season *uint) ([]*rms_library.Torrent, error)
 }

@@ -26,7 +26,7 @@ func main() {
 		micro.Flags(
 			&cli.StringFlag{
 				Name:        "command",
-				Usage:       "add,list,delete,move,torrents-list,torrents-delete,torrents-find,torrent-replace",
+				Usage:       "add,list,delete,move,torrents-list,torrents-delete,torrents-find,torrent-add",
 				Required:    true,
 				Destination: &command,
 			},
@@ -67,8 +67,8 @@ func main() {
 		torrentsDeleteCommand(service.Client(), query, torrentId)
 	case "torrents-find":
 		torrentsFindCommand(service.Client(), query)
-	case "torrents-replace":
-		torrentsReplaceCommand(service.Client(), query, torrentId)
+	case "torrents-add":
+		torrentsAddCommand(service.Client(), query, torrentId)
 	default:
 		panic("unknown command")
 	}
@@ -157,7 +157,7 @@ func torrentsDeleteCommand(cli client.Client, id, tId string) {
 
 func torrentsFindCommand(cli client.Client, id string) {
 	torrents := rms_library.NewTorrentsService("rms-library", cli)
-	list, err := torrents.FindAlternatives(context.Background(), &rms_library.TorrentsFindAlternativesRequest{Id: id})
+	list, err := torrents.Find(context.Background(), &rms_library.TorrentsFindRequest{Id: id})
 	if err != nil {
 		panic(err)
 	}
@@ -167,26 +167,10 @@ func torrentsFindCommand(cli client.Client, id string) {
 	}
 }
 
-func torrentsReplaceCommand(cli client.Client, id, tId string) {
+func torrentsAddCommand(cli client.Client, id, tId string) {
 	torrents := rms_library.NewTorrentsService("rms-library", cli)
 
-	list, err := torrents.List(context.Background(), &rms_library.TorrentsListRequest{Id: id})
-	if err != nil {
-		panic(err)
-	}
-
-	if len(list.Torrents) == 0 {
-		_, err = torrents.Add(context.Background(), &rms_library.TorrentsAddRequest{
-			Id:           id,
-			NewTorrentId: tId,
-		})
-		if err != nil {
-			panic(err)
-		}
-		return
-	}
-
-	_, err = torrents.Replace(context.Background(), &rms_library.TorrentsReplaceRequest{Id: id, TorrentId: list.Torrents[0].Id, NewTorrentId: &tId})
+	_, err := torrents.Add(context.Background(), &rms_library.TorrentsAddRequest{Id: id, Link: &tId})
 	if err != nil {
 		panic(err)
 	}

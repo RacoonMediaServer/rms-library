@@ -64,6 +64,8 @@ github.com/RacoonMediaServer/rms-packages v1.16.8 h1:g0n1gN50gT22MliKk/O9EiU0P2a
 github.com/RacoonMediaServer/rms-packages v1.16.8/go.mod h1:RiGcnXZXAcnk2LCVTGI31gqfYPBUoiSxjX7L7024aB0=
 github.com/RacoonMediaServer/rms-packages v1.17.0 h1:UT8zaHaiUDSY7MUnK6DPDW0YIxtdFhKKM1T3pzcs2Ps=
 github.com/RacoonMediaServer/rms-packages v1.17.0/go.mod h1:RiGcnXZXAcnk2LCVTGI31gqfYPBUoiSxjX7L7024aB0=
+github.com/RacoonMediaServer/rms-packages v1.17.1 h1:yp6whKTJrbYQA4uZOl95g3O0XtTGSg+lfMGodrw6rj8=
+github.com/RacoonMediaServer/rms-packages v1.17.1/go.mod h1:RiGcnXZXAcnk2LCVTGI31gqfYPBUoiSxjX7L7024aB0=
 github.com/Shopify/sarama v1.19.0/go.mod h1:FVkBWblsNy7DGZRfXLU0O9RCGt5g3g3yEuWXgklEdEo=
 github.com/Shopify/toxiproxy v2.1.4+incompatible/go.mod h1:OXgGpZ6Cli1/URJOF1DMxUHB2q5Ap20/P/eIdh4G0pI=
 github.com/acomagu/bufpipe v1.0.3 h1:fxAGrHZTgQ9w5QqVItgzwj235/uYZYgbXitB+dLupOk=

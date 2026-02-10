@@ -16,12 +16,7 @@ import (
 	httptransport "github.com/go-openapi/runtime/client"
 	"github.com/go-openapi/strfmt"
 	"go-micro.dev/v4/logger"
-	"google.golang.org/protobuf/types/known/emptypb"
 )
-
-func init() {
-
-}
 
 const searchTorrentsLimit uint = 10
 
@@ -46,11 +41,6 @@ func (l *MoviesService) Get(ctx context.Context, req *rms_library.MoviesGetReque
 
 	resp.Info = &mov.Info
 	return nil
-}
-
-// GetUpdates implements rms_library.MoviesHandler.
-func (l *MoviesService) GetUpdates(context.Context, *emptypb.Empty, *rms_library.MoviesGetUpdatesResponse) error {
-	panic("unimplemented")
 }
 
 // Settings holds all dependencies of service
