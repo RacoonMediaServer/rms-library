@@ -126,3 +126,17 @@ func (d Database) UpdateMovieArchiveContent(ctx context.Context, mov *model.Movi
 
 	return nil
 }
+
+func (d Database) UpdateMovieInfoSeasons(ctx context.Context, mov *model.Movie) error {
+	ctx, cancel := context.WithTimeout(ctx, databaseTimeout)
+	defer cancel()
+
+	filter := bson.D{{Key: "_id", Value: mov.ID.String()}, {Key: "contenttype", Value: int(rms_library.ContentType_TypeMovies)}}
+	update := bson.D{{"$set", bson.D{{"info.seasons", mov.Info.Seasons}}}}
+	_, err := d.media.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

@@ -30,3 +30,12 @@ func MakeID(id string, contentType rms_library.ContentType) ID {
 func (id ID) String() string {
 	return string(id)
 }
+
+func (id ID) Strip() string {
+	for _, prefix := range contentTypePrefix {
+		if strings.HasPrefix(string(id), prefix) {
+			return strings.TrimPrefix(string(id), prefix)
+		}
+	}
+	return id.String()
+}

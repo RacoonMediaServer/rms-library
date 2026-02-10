@@ -19,6 +19,7 @@ type Database interface {
 	AddMovie(ctx context.Context, mov *model.Movie) error
 	GetMovie(ctx context.Context, id model.ID) (*model.Movie, error)
 	UpdateMovieArchiveContent(ctx context.Context, mov *model.Movie) error
+	UpdateMovieInfoSeasons(ctx context.Context, mov *model.Movie) error
 }
 
 type DirectoryManager interface {

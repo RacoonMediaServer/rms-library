@@ -20,6 +20,7 @@ import (
 
 const watchInterval = 2 * time.Minute
 const notifyTimeout = 15 * time.Second
+const checkReleasesInterval = 24 * time.Hour
 
 var errAnyTorrentsNotFound = errors.New("any torrents not found")
 
@@ -92,25 +93,7 @@ func (l MoviesService) asyncDownloadContent(log logger.Logger, ctx context.Conte
 		return fmt.Errorf("add content failed: %w", err)
 	}
 
-	// TODO: send notification
-
-	task := schedule.Task{
-		Group: id.String(),
-		Fn: schedule.GetPeriodicWrapper(
-			logger.Fields(map[string]interface{}{
-				"op":    "movieWatcher",
-				"id":    id.String(),
-				"title": mov.Info.Title,
-			}),
-			watchInterval,
-			func(log logger.Logger, ctx context.Context) error {
-				return l.asyncWatch(log, ctx, id)
-			},
-		),
-	}
-	task.After(watchInterval)
-	l.sched.Add(&task)
-
+	l.startWatchers(mov)
 	return nil
 }
 
@@ -151,7 +134,7 @@ func (l MoviesService) searchAndDownload(log logger.Logger, ctx context.Context,
 		}
 	}
 
-	l.notifyUser(log, ctx, mov, getSeasons(result))
+	l.notifyUser(log, ctx, mov, events.Notification_ContentFound, getSeasons(result))
 	return nil
 }
 
@@ -205,20 +188,20 @@ func (l MoviesService) searchAndSave(log logger.Logger, ctx context.Context, mov
 		totalSeasons = append(totalSeasons, uint32(no))
 	}
 	sort.SliceStable(totalSeasons, func(i, j int) bool { return totalSeasons[i] < totalSeasons[j] })
-	l.notifyUser(log, ctx, mov, totalSeasons)
+	l.notifyUser(log, ctx, mov, events.Notification_ContentFound, totalSeasons)
 
 	logger.Infof("Item '%s' [ %s ] saved to archive", mov.Info.Title, mov.ID)
 	return nil
 }
 
-func (l MoviesService) notifyUser(log logger.Logger, ctx context.Context, mov *model.Movie, seasons []uint32) {
+func (l MoviesService) notifyUser(log logger.Logger, ctx context.Context, mov *model.Movie, kind events.Notification_Kind, seasons []uint32) {
 	nCtx, nCancel := context.WithTimeout(ctx, notifyTimeout)
 	defer nCancel()
 
 	size := uint32(mov.Size())
 	event := events.Notification{
 		Sender:    "rms-library",
-		Kind:      events.Notification_ContentFound,
+		Kind:      kind,
 		MediaID:   (*string)(&mov.ID),
 		ItemTitle: &mov.Title,
 		SizeMB:    &size,

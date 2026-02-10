@@ -2,13 +2,10 @@ package movies
 
 import (
 	"context"
-	"math/rand"
-	"time"
 
 	"github.com/RacoonMediaServer/rms-library/internal/config"
 	"github.com/RacoonMediaServer/rms-library/internal/lock"
 	"github.com/RacoonMediaServer/rms-library/internal/model"
-	"github.com/RacoonMediaServer/rms-library/internal/schedule"
 	"github.com/RacoonMediaServer/rms-media-discovery/pkg/client/client"
 	rms_library "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-library"
 	"github.com/RacoonMediaServer/rms-packages/pkg/service/servicemgr"
@@ -89,24 +86,7 @@ func (l MoviesService) Initialize() error {
 		logger.Debugf("Movie found: %s", mov.Title)
 
 		l.dir.CreateMovieLayout(mov)
-
-		// start watcher
-		task := schedule.Task{
-			Group: mov.ID.String(),
-			Fn: schedule.GetPeriodicWrapper(
-				logger.Fields(map[string]interface{}{
-					"op":    "movieWatcher",
-					"id":    mov.ID.String(),
-					"title": mov.Info.Title,
-				}),
-				watchInterval,
-				func(log logger.Logger, ctx context.Context) error {
-					return l.asyncWatch(log, ctx, mov.ID)
-				},
-			),
-		}
-		task.After(time.Duration(rand.Intn(240)) * time.Second)
-		l.sched.Add(&task)
+		l.startWatchers(mov)
 	}
 
 	return nil
