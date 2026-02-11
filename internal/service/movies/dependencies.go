@@ -24,8 +24,7 @@ type Database interface {
 
 type DirectoryManager interface {
 	CreateMovieLayout(mov *model.Movie)
-	GetDownloadedSeasons(mov *model.Movie) map[uint]struct{}
-	GetTorrentSeasons(t *model.TorrentRecord) map[uint]struct{}
+	UpdateItemLayout(id model.ID)
 	StoreArchiveTorrent(itemTitle string, torrent []byte) (path string, err error)
 	LoadArchiveTorrent(contentPath string) ([]byte, error)
 }

@@ -12,7 +12,5 @@ type Database interface {
 
 type DirectoryManager interface {
 	GetDownloadedSeasons(mov *model.Movie) map[uint]struct{}
-	CreateMovieLayout(mov *model.Movie)
-	DeleteMovieLayout(mov *model.Movie)
-	CreateMoviesLayout(movies []*model.Movie) error
+	UpdateItemLayout(id model.ID)
 }

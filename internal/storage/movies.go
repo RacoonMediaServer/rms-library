@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path"
@@ -60,34 +61,27 @@ func getMovieDirectories(mov *model.Movie) (directories []string) {
 	return
 }
 
-func (m *Manager) CreateMoviesLayout(movies []*model.Movie) error {
-	dirs, err := os.ReadDir(m.dirs.Content)
-	if err != nil {
-		return err
-	}
-	for _, d := range dirs {
-		_ = os.RemoveAll(path.Join(m.dirs.Content, d.Name()))
-	}
-
-	for _, mov := range movies {
-		m.CreateMovieLayout(mov)
-	}
-
-	return nil
-}
-
 // CreateMovieLayout creates pretty symbolic links to movie
 func (m *Manager) CreateMovieLayout(mov *model.Movie) {
 	m.cmd <- func() {
-		l := newMovieLayout(mov, m.dirs.Downloads, m.dirs.Content)
+		mi := m.addMovieInfoToCache(mov)
+		l := newMovieLayout(mi, mov.Torrents, m.dirs.Content)
 		l.make()
 	}
 }
 
-// DeleteMovieLayout removes all links to the movie
-func (m *Manager) DeleteMovieLayout(mov *model.Movie) {
+func (m *Manager) DeleteItemLayout(id model.ID) {
 	m.cmd <- func() {
-		dirs := getMovieDirectories(mov)
+		dirs := []string{}
+
+		m.mu.Lock()
+		mi := m.cache[id]
+		if mi != nil {
+			delete(m.cache, id)
+			dirs = mi.directories
+		}
+		m.mu.Unlock()
+
 		for _, dir := range dirs {
 			dir = path.Join(m.dirs.Content, dir)
 			_ = os.RemoveAll(dir)
@@ -95,25 +89,22 @@ func (m *Manager) DeleteMovieLayout(mov *model.Movie) {
 	}
 }
 
-func (m *Manager) GetTorrentSeasons(t *model.TorrentRecord) map[uint]struct{} {
-	seasons := map[uint]struct{}{}
-	err := filepath.Walk(t.Location,
-		func(path string, info os.FileInfo, err error) error {
-			if err != nil {
-				return err
-			}
-			if info.IsDir() {
-				return nil
-			}
+func (m *Manager) UpdateItemLayout(id model.ID) {
+	m.cmd <- func() {
+		m.mu.Lock()
+		mi := m.cache[id]
+		m.mu.Unlock()
 
-			result := analysis.Analyze(path)
-			if result.Season != 0 {
-				seasons[result.Season] = struct{}{}
-			}
-			return nil
-		})
-	if err != nil {
-		logger.Warnf("Walk through %s failed: %s", t.Location, err)
+		if mi == nil {
+			return
+		}
+
+		item, err := m.db.GetListItem(context.Background(), id)
+		if err != nil || item == nil {
+			return
+		}
+
+		l := newMovieLayout(mi, item.Torrents, m.dirs.Content)
+		l.make()
 	}
-	return seasons
 }

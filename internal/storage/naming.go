@@ -17,11 +17,11 @@ const (
 	nameByYear   = "Год"
 )
 
-func composeMovieFileName(mov *model.Movie, f *dirEntry) string {
+func composeMovieFileName(mi *mediaInfo, f *dirEntry) string {
 	_, fileName := path.Split(f.path)
 	ext := path.Ext(f.path)
 
-	switch mov.Info.Type {
+	switch mi.movieType {
 	case rms_library.MovieType_Film:
 		if f.info.EpisodeName == "" {
 			return fileName

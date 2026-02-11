@@ -73,6 +73,8 @@ func (m *Manager) Download(ctx context.Context, item *model.ListItem, torrent []
 		return fmt.Errorf("update movie content failed: %s", err)
 	}
 
+	m.dm.UpdateItemLayout(item.ID)
+
 	return nil
 }
 
@@ -110,6 +112,7 @@ func (m *Manager) RemoveTorrent(ctx context.Context, item *model.ListItem, torre
 	}
 
 	item.Torrents = updatedTorrents
+	m.dm.UpdateItemLayout(item.ID)
 	return nil
 }
 
@@ -164,6 +167,7 @@ func (m *Manager) DropMissedTorrents(ctx context.Context, item *model.ListItem) 
 	}
 
 	item.Torrents = resultTorrents
+	m.dm.UpdateItemLayout(item.ID)
 	return nil
 }
 
@@ -190,5 +194,9 @@ func (m *Manager) UpdateTorrentInfo(ctx context.Context, item *model.ListItem) e
 		return nil
 	}
 
-	return m.db.UpdateContent(ctx, item.ID, item.Torrents)
+	err := m.db.UpdateContent(ctx, item.ID, item.Torrents)
+	if err == nil {
+		m.dm.UpdateItemLayout(item.ID)
+	}
+	return err
 }

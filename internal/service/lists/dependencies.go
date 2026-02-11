@@ -25,3 +25,7 @@ type Scheduler interface {
 type DownloadManager interface {
 	DropTorrents(ctx context.Context, torrents []model.TorrentRecord)
 }
+
+type DirectoryManager interface {
+	DeleteItemLayout(id model.ID)
+}

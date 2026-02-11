@@ -18,7 +18,7 @@ import (
 	"go-micro.dev/v4/logger"
 )
 
-const watchInterval = 2 * time.Minute
+const watchInterval = 1 * time.Minute
 const notifyTimeout = 15 * time.Second
 const checkReleasesInterval = 24 * time.Hour
 
@@ -134,6 +134,8 @@ func (l MoviesService) searchAndDownload(log logger.Logger, ctx context.Context,
 			log.Logf(logger.ErrorLevel, "Download failed: %s", err)
 		}
 	}
+
+	l.dir.CreateMovieLayout(mov)
 
 	l.notifyUser(log, ctx, mov, events.Notification_ContentFound, getSeasons(result))
 	return nil

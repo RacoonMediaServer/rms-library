@@ -65,12 +65,12 @@ func (l MoviesService) startWatchers(mov *model.Movie) {
 			},
 		),
 	}
-	task.After(time.Duration(rand.Intn(240)) * time.Second)
+	task.After(time.Duration(rand.Intn(10)) * time.Second)
 	l.sched.Add(&task)
 
 	if mov.Info.Type == rms_library.MovieType_TvSeries {
 		// periodic task for search new releases
-		task = schedule.Task{
+		schedTask := schedule.Task{
 			Group: mov.ID.String(),
 			Fn: schedule.GetPeriodicWrapper(
 				logger.Fields(map[string]interface{}{
@@ -84,8 +84,8 @@ func (l MoviesService) startWatchers(mov *model.Movie) {
 				},
 			),
 		}
-		task.After(time.Duration(rand.Intn(24)) * time.Second)
-		l.sched.Add(&task)
+		schedTask.After(time.Duration(rand.Intn(24)) * time.Hour)
+		l.sched.Add(&schedTask)
 	}
 }
 
@@ -127,11 +127,14 @@ func (l MoviesService) asyncWatch(log logger.Logger, ctx context.Context, id mod
 	return nil
 }
 
-func (l MoviesService) watcherRemoveUnusedTorrents(log logger.Logger, ctx context.Context, mov *model.Movie) {
+func (l MoviesService) watcherRemoveUnusedTorrents(log logger.Logger, ctx context.Context, mov *model.Movie) bool {
+	changed := false
 	removeUnusedTorrent := func(log logger.Logger, ctx context.Context, mov *model.Movie, t *model.TorrentRecord) {
 		log.Logf(logger.DebugLevel, "Unused torrent found: %s [ %s ]", t.Title, t.ID)
 		if err := l.dm.RemoveTorrent(ctx, &mov.ListItem, t.ID); err != nil {
 			log.Logf(logger.WarnLevel, "Remove unused torrent failed: %s", err)
+		} else {
+			changed = true
 		}
 	}
 	switch mov.List {
@@ -152,6 +155,8 @@ func (l MoviesService) watcherRemoveUnusedTorrents(log logger.Logger, ctx contex
 			}
 		}
 	}
+
+	return changed
 }
 
 func (l MoviesService) watcherRemoveMissedTorrents(log logger.Logger, ctx context.Context, mov *model.Movie) {

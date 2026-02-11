@@ -49,7 +49,7 @@ func (s *Service) getItem(ctx context.Context, id model.ID) (*model.ListItem, lo
 
 // Add implements rms_library.TorrentsHandler.
 func (s *Service) Add(ctx context.Context, req *rms_library.TorrentsAddRequest, resp *emptypb.Empty) error {
-	if req.Link == nil || len(req.TorrentFile) == 0 {
+	if req.Link == nil && len(req.TorrentFile) == 0 {
 		return errors.New("no torrent content presented")
 	}
 	if req.Link != nil && len(req.TorrentFile) != 0 {

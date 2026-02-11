@@ -26,20 +26,20 @@ type tvSeriesLayout struct {
 }
 
 type movieLayout struct {
-	mov              *model.Movie
-	downloadsRootDir string
-	reprRootDir      string
-	rawFolders       map[string][]dirEntry
-	filmFile         dirEntry
-	tvSeries         tvSeriesLayout
+	mi          *mediaInfo
+	reprRootDir string
+	rawFolders  map[string][]dirEntry
+	filmFile    dirEntry
+	tvSeries    tvSeriesLayout
+	torrents    []model.TorrentRecord
 }
 
-func newMovieLayout(mov *model.Movie, downloadsDir, reprDir string) *movieLayout {
+func newMovieLayout(mi *mediaInfo, torrents []model.TorrentRecord, reprDir string) *movieLayout {
 	return &movieLayout{
-		mov:              mov,
-		downloadsRootDir: downloadsDir,
-		reprRootDir:      reprDir,
-		rawFolders:       map[string][]dirEntry{},
+		mi:          mi,
+		torrents:    torrents,
+		reprRootDir: reprDir,
+		rawFolders:  map[string][]dirEntry{},
 		tvSeries: tvSeriesLayout{
 			seasons: map[uint]map[int]dirEntry{},
 		},
@@ -47,7 +47,7 @@ func newMovieLayout(mov *model.Movie, downloadsDir, reprDir string) *movieLayout
 }
 
 func (l *movieLayout) buildIndex() {
-	for _, t := range l.mov.Torrents {
+	for _, t := range l.torrents {
 		l.addContentDirectory(t.Title, &t)
 	}
 }
@@ -62,7 +62,7 @@ func (l *movieLayout) addContentDirectory(title string, t *model.TorrentRecord) 
 	}
 
 	if !fi.IsDir() {
-		fullDir = filepath.Base(t.Location)
+		fullDir = filepath.Dir(t.Location)
 	}
 
 	files := []dirEntry{}
@@ -75,7 +75,7 @@ func (l *movieLayout) addContentDirectory(title string, t *model.TorrentRecord) 
 		}
 
 		relpath := ""
-		relpath, err = filepath.Rel(filepath.Base(fullDir), path)
+		relpath, err = filepath.Rel(filepath.Dir(t.Location), path)
 		if err != nil {
 			return err
 		}
@@ -88,12 +88,12 @@ func (l *movieLayout) addContentDirectory(title string, t *model.TorrentRecord) 
 		logger.Debugf("File '%s' as '%s' to index", path, relpath)
 
 		files = append(files, entry)
-		if l.mov.Info.Type == rms_library.MovieType_Film {
+		if l.mi.movieType == rms_library.MovieType_Film {
 			if entry.info.FileType == model.FileTypeFilm {
 				l.filmFile = entry
 				logger.Debugf("Found film entry '%s' in %s", entry.info.EpisodeName, entry.relpath)
 			}
-		} else if l.mov.Info.Type == rms_library.MovieType_TvSeries {
+		} else if l.mi.movieType == rms_library.MovieType_TvSeries {
 			l.tvSeries.addFile(entry)
 		}
 		return nil
@@ -124,9 +124,8 @@ func (l *tvSeriesLayout) addFile(f dirEntry) {
 
 func (l *movieLayout) make() {
 	l.buildIndex()
-	dirs := getMovieDirectories(l.mov)
 
-	for _, dir := range dirs {
+	for _, dir := range l.mi.directories {
 		_ = os.RemoveAll(path.Join(l.reprRootDir, dir))
 
 		if err := os.MkdirAll(path.Join(l.reprRootDir, dir), mediaPerms); err != nil {
@@ -134,7 +133,7 @@ func (l *movieLayout) make() {
 			continue
 		}
 
-		switch l.mov.Info.Type {
+		switch l.mi.movieType {
 		case rms_library.MovieType_TvSeries:
 			for no, season := range l.tvSeries.seasons {
 				l.makeSeasonLinks(dir, no, season)
@@ -152,7 +151,7 @@ func (l *movieLayout) make() {
 
 func (l *movieLayout) makeLink(dir string, entry dirEntry) {
 	oldName := entry.path
-	newName := path.Join(l.reprRootDir, dir, composeMovieFileName(l.mov, &entry))
+	newName := path.Join(l.reprRootDir, dir, composeMovieFileName(l.mi, &entry))
 	_ = os.MkdirAll(path.Dir(newName), mediaPerms)
 	if err := os.Symlink(oldName, newName); err != nil {
 		logger.Warnf("Create link failed: %s", err)
@@ -167,9 +166,13 @@ func (l *movieLayout) makeFilmLink(dir string) {
 }
 
 func (l *movieLayout) makeRawLinks(dir string) {
-	for rootDir, files := range l.rawFolders {
+	for _, files := range l.rawFolders {
 		for _, entry := range files {
-			l.makeLink(filepath.Join(dir, rootDir), entry)
+			newName := path.Join(l.reprRootDir, dir, entry.relpath)
+			_ = os.MkdirAll(path.Dir(newName), mediaPerms)
+			if err := os.Symlink(entry.path, newName); err != nil {
+				logger.Warnf("Create raw link failed: %s", err)
+			}
 		}
 	}
 }

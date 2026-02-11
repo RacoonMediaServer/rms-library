@@ -83,7 +83,7 @@ func main() {
 	}
 
 	// создаем структуру директорий
-	dirManager, err := storage.NewManager(cfg.Directories)
+	dirManager, err := storage.NewManager(database, cfg.Directories)
 	if err != nil {
 		logger.Fatalf("Cannot initialize directory manager: %s", err)
 	}
@@ -112,11 +112,12 @@ func main() {
 	}
 
 	listsService := &lists.Service{
-		Database:  database,
-		Movies:    moviesService,
-		Scheduler: sched,
-		Downloads: downloadManager,
-		Locker:    lk,
+		Database:         database,
+		Movies:           moviesService,
+		Scheduler:        sched,
+		Downloads:        downloadManager,
+		Locker:           lk,
+		DirectoryManager: dirManager,
 	}
 
 	torrentsService := &torrents.Service{
