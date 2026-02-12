@@ -17,6 +17,7 @@ import (
 	"github.com/RacoonMediaServer/rms-packages/pkg/events"
 	rms_library "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-library"
 	"go-micro.dev/v4/logger"
+	"golang.org/x/exp/slices"
 )
 
 const lockWait = 5 * time.Second
@@ -128,31 +129,33 @@ func (l MoviesService) asyncWatch(log logger.Logger, ctx context.Context, id mod
 }
 
 func (l MoviesService) watcherRemoveUnusedTorrents(log logger.Logger, ctx context.Context, mov *model.Movie) bool {
+	toRemove := []model.TorrentRecord{}
+
 	changed := false
-	removeUnusedTorrent := func(log logger.Logger, ctx context.Context, mov *model.Movie, t *model.TorrentRecord) {
-		log.Logf(logger.DebugLevel, "Unused torrent found: %s [ %s ]", t.Title, t.ID)
-		if err := l.dm.RemoveTorrent(ctx, &mov.ListItem, t.ID); err != nil {
-			log.Logf(logger.WarnLevel, "Remove unused torrent failed: %s", err)
-		} else {
-			changed = true
-		}
-	}
+
 	switch mov.List {
 	case rms_library.List_Archive:
-		for _, t := range mov.Torrents {
-			removeUnusedTorrent(log, ctx, mov, &t)
-		}
+		toRemove = slices.Clone(mov.Torrents)
 	case rms_library.List_WatchList:
 		for _, t := range mov.Torrents {
 			if !t.Online {
-				removeUnusedTorrent(log, ctx, mov, &t)
+				toRemove = append(toRemove, t)
 			}
 		}
 	case rms_library.List_Favourites:
 		for _, t := range mov.Torrents {
 			if t.Online {
-				removeUnusedTorrent(log, ctx, mov, &t)
+				toRemove = append(toRemove, t)
 			}
+		}
+	}
+
+	for _, t := range toRemove {
+		log.Logf(logger.DebugLevel, "Unused torrent found: %s [ %s ]", t.Title, t.ID)
+		if err := l.dm.RemoveTorrent(ctx, &mov.ListItem, t.ID); err != nil {
+			log.Logf(logger.WarnLevel, "Remove unused torrent failed: %s", err)
+		} else {
+			changed = true
 		}
 	}
 
