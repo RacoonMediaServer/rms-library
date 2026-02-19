@@ -3,7 +3,7 @@ package movsearch
 import (
 	"context"
 
-	"github.com/RacoonMediaServer/rms-library/pkg/selector"
+	"github.com/RacoonMediaServer/rms-library/v3/pkg/selector"
 	rms_library "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-library"
 )
 

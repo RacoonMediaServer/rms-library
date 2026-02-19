@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/RacoonMediaServer/rms-library/internal/config"
-	"github.com/RacoonMediaServer/rms-library/internal/db"
-	"github.com/RacoonMediaServer/rms-library/internal/model"
+	"github.com/RacoonMediaServer/rms-library/v3/internal/config"
+	"github.com/RacoonMediaServer/rms-library/v3/internal/db"
+	"github.com/RacoonMediaServer/rms-library/v3/internal/model"
 	"github.com/RacoonMediaServer/rms-packages/pkg/service/servicemgr"
 	"go-micro.dev/v4/logger"
 )

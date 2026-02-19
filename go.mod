@@ -1,4 +1,4 @@
-module github.com/RacoonMediaServer/rms-library
+module github.com/RacoonMediaServer/rms-library/v3
 
 go 1.25.0
 

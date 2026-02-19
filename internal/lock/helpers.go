@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/RacoonMediaServer/rms-library/internal/model"
+	"github.com/RacoonMediaServer/rms-library/v3/internal/model"
 )
 
 func TimedLock(ctx context.Context, lock Locker, id model.ID, timeout time.Duration) (Unlocker, error) {

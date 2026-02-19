@@ -3,8 +3,8 @@ package movies
 import (
 	"context"
 
-	"github.com/RacoonMediaServer/rms-library/internal/model"
-	"github.com/RacoonMediaServer/rms-library/internal/schedule"
+	"github.com/RacoonMediaServer/rms-library/v3/internal/model"
+	"github.com/RacoonMediaServer/rms-library/v3/internal/schedule"
 	rms_library "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-library"
 )
 

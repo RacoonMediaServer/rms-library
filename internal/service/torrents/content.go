@@ -3,7 +3,7 @@ package torrents
 import (
 	"context"
 
-	"github.com/RacoonMediaServer/rms-library/internal/model"
+	"github.com/RacoonMediaServer/rms-library/v3/internal/model"
 )
 
 func (s *Service) download(ctx context.Context, item *model.ListItem, torrentLink *string, content []byte) error {

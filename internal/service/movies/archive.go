@@ -3,8 +3,8 @@ package movies
 import (
 	"context"
 
-	"github.com/RacoonMediaServer/rms-library/internal/model"
-	"github.com/RacoonMediaServer/rms-library/pkg/movsearch"
+	"github.com/RacoonMediaServer/rms-library/v3/internal/model"
+	"github.com/RacoonMediaServer/rms-library/v3/pkg/movsearch"
 	"github.com/RacoonMediaServer/rms-media-discovery/pkg/client/models"
 	"go-micro.dev/v4/logger"
 )

@@ -3,9 +3,9 @@ package movies
 import (
 	"context"
 
-	"github.com/RacoonMediaServer/rms-library/internal/config"
-	"github.com/RacoonMediaServer/rms-library/internal/lock"
-	"github.com/RacoonMediaServer/rms-library/internal/model"
+	"github.com/RacoonMediaServer/rms-library/v3/internal/config"
+	"github.com/RacoonMediaServer/rms-library/v3/internal/lock"
+	"github.com/RacoonMediaServer/rms-library/v3/internal/model"
 	"github.com/RacoonMediaServer/rms-media-discovery/pkg/client/client"
 	rms_library "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-library"
 	"github.com/RacoonMediaServer/rms-packages/pkg/service/servicemgr"

@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/RacoonMediaServer/rms-library/internal/model"
+	"github.com/RacoonMediaServer/rms-library/v3/internal/model"
 )
 
 type Locker interface {

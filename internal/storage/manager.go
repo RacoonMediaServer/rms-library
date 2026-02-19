@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/RacoonMediaServer/rms-library/internal/config"
+	"github.com/RacoonMediaServer/rms-library/v3/internal/config"
 )
 
 const mediaPerms = 0755

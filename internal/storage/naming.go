@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"path"
 
-	"github.com/RacoonMediaServer/rms-library/internal/analysis"
+	"github.com/RacoonMediaServer/rms-library/v3/internal/analysis"
 	rms_library "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-library"
 )
 
