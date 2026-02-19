@@ -14,6 +14,6 @@ type Database interface {
 }
 
 type DirectoryManager interface {
-	MoviesMountTorrent(mi *rms_library.MovieInfo, t *model.TorrentRecord)
+	MoviesMountTorrent(mi *rms_library.MovieInfo, t *model.TorrentRecord) error
 	MoviesUmountTorrent(mi *rms_library.MovieInfo, t *model.TorrentRecord)
 }

@@ -26,7 +26,7 @@ type movieLayout struct {
 }
 
 // MoviesMountTorrent implements downloads.DirectoryManager.
-func (m *Manager) MoviesMountTorrent(mi *rms_library.MovieInfo, t *model.TorrentRecord) {
+func (m *Manager) MoviesMountTorrent(mi *rms_library.MovieInfo, t *model.TorrentRecord) error {
 	l := logger.DefaultLogger.Fields(map[string]interface{}{
 		"title":   mi.Title,
 		"tid":     t.ID,
@@ -36,7 +36,7 @@ func (m *Manager) MoviesMountTorrent(mi *rms_library.MovieInfo, t *model.Torrent
 	fi, err := os.Stat(t.Location)
 	if err != nil {
 		l.Logf(logger.ErrorLevel, "Location '%s' is empty or inaccessible", t.Location)
-		return
+		return err
 	}
 
 	ml := &movieLayout{
@@ -49,10 +49,11 @@ func (m *Manager) MoviesMountTorrent(mi *rms_library.MovieInfo, t *model.Torrent
 
 	if !fi.IsDir() {
 		ml.makeLinks(t.Location, fi.Name())
-		return
+		return nil
 	}
 
 	ml.mount()
+	return nil
 }
 
 // MoviesUmountTorrent implements downloads.DirectoryManager.

@@ -9,9 +9,12 @@ import (
 	"slices"
 
 	"github.com/RacoonMediaServer/rms-library/internal/model"
+	"github.com/RacoonMediaServer/rms-packages/pkg/pubsub"
 	rms_library "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-library"
 	rms_torrent "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-torrent"
+	"go-micro.dev/v4"
 	"go-micro.dev/v4/logger"
+	"go-micro.dev/v4/server"
 )
 
 const eventsCapacity = 10000
@@ -24,19 +27,21 @@ type Manager struct {
 	db        Database
 	eventChan chan interface{}
 
-	mu      sync.Mutex
-	movInfo map[model.ID]*rms_library.MovieInfo
+	mu                sync.Mutex
+	movInfo           map[model.ID]*rms_library.MovieInfo
+	mapTorrentToMedia map[string]model.ID
 }
 
 // NewManager creates a Manager instance
 func NewManager(cli rms_torrent.RmsTorrentService, onlineCli rms_torrent.RmsTorrentService, db Database, dm DirectoryManager) (*Manager, error) {
 	m := Manager{
-		cli:       cli,
-		onlineCli: onlineCli,
-		db:        db,
-		dm:        dm,
-		eventChan: make(chan interface{}, eventsCapacity),
-		movInfo:   map[model.ID]*rms_library.MovieInfo{},
+		cli:               cli,
+		onlineCli:         onlineCli,
+		db:                db,
+		dm:                dm,
+		eventChan:         make(chan interface{}, eventsCapacity),
+		movInfo:           map[model.ID]*rms_library.MovieInfo{},
+		mapTorrentToMedia: map[string]model.ID{},
 	}
 
 	if err := m.startLayoutCreation(); err != nil {
@@ -60,6 +65,10 @@ func (m *Manager) startLayoutCreation() error {
 	}
 
 	return nil
+}
+
+func (m *Manager) Subscribe(server server.Server) error {
+	return micro.RegisterSubscriber(pubsub.NotificationTopic, server, m.handleExternalNotifications)
 }
 
 func (m *Manager) client(onlinePlayback bool) rms_torrent.RmsTorrentService {

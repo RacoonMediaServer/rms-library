@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/RacoonMediaServer/rms-library/internal/model"
+	"github.com/RacoonMediaServer/rms-packages/pkg/events"
 	rms_library "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-library"
 	rms_torrent "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-torrent"
 	"go-micro.dev/v4/logger"
@@ -78,12 +79,22 @@ func (m *Manager) getMovieInfo(id model.ID) (*rms_library.MovieInfo, error) {
 func (m *Manager) processEventNew(e *eventNew) {
 	m.mu.Lock()
 	m.movInfo[e.movie.ID] = &e.movie.Info
+	for _, t := range e.movie.Torrents {
+		m.mapTorrentToMedia[t.ID] = e.movie.ID
+	}
 	m.mu.Unlock()
 
-	// данные на диске появляются не сразу после добавления торрента, костыль
-	<-time.After(addTimeout)
+	retry := []model.TorrentRecord{}
+	for _, t := range e.movie.Torrents {
+		if err := m.layoutAddTorrent(&e.movie.Info, &t); err != nil {
+			retry = append(retry, t)
+		}
+	}
 
-	m.createMovieLayout(e.movie)
+	if len(retry) != 0 {
+		<-time.After(addTimeout)
+		m.eventChan <- &eventAdd{id: e.movie.ID, torrents: retry}
+	}
 }
 
 func (m *Manager) processEventAdd(e *eventAdd) {
@@ -96,8 +107,22 @@ func (m *Manager) processEventAdd(e *eventAdd) {
 	// данные на диске появляются не сразу после добавления торрента, костыль
 	<-time.After(addTimeout)
 
+	m.mu.Lock()
 	for _, t := range e.torrents {
-		m.layoutAddTorrent(mi, &t)
+		m.mapTorrentToMedia[t.ID] = e.id
+	}
+	m.mu.Unlock()
+
+	retry := []model.TorrentRecord{}
+	for _, t := range e.torrents {
+		if err := m.layoutAddTorrent(mi, &t); err != nil {
+			retry = append(retry, t)
+		}
+	}
+
+	if len(retry) != 0 {
+		<-time.After(addTimeout)
+		m.eventChan <- &eventAdd{id: e.id, torrents: retry}
 	}
 }
 
@@ -126,26 +151,59 @@ func (m *Manager) processEventRemove(e *eventRemove) {
 	}
 }
 
-func (m *Manager) createMovieLayout(mov *model.Movie) {
-	for _, t := range mov.Torrents {
-		m.layoutAddTorrent(&mov.Info, &t)
-	}
-}
-
-func (m *Manager) layoutAddTorrent(mi *rms_library.MovieInfo, t *model.TorrentRecord) {
+func (m *Manager) layoutAddTorrent(mi *rms_library.MovieInfo, t *model.TorrentRecord) error {
 	if !t.Online {
 		info, err := m.cli.GetTorrentInfo(context.Background(), &rms_torrent.GetTorrentInfoRequest{Id: t.ID})
 		if err == nil {
 			if info.Status != rms_torrent.Status_Done {
-				return
+				return nil
 			}
 		} else {
 			logger.Errorf("Get torrent status for '%s' failed: %s", t.ID, err)
 		}
 	}
-	m.dm.MoviesMountTorrent(mi, t)
+
+	return m.dm.MoviesMountTorrent(mi, t)
 }
 
 func (m *Manager) layoutRemoveTorrent(mi *rms_library.MovieInfo, t *model.TorrentRecord) {
 	m.dm.MoviesUmountTorrent(mi, t)
+}
+
+func (m *Manager) handleExternalNotifications(ctx context.Context, event events.Notification) error {
+	if event.TorrentID == nil {
+		return nil
+	}
+
+	if event.Kind != events.Notification_DownloadComplete {
+		return nil
+	}
+
+	m.mu.Lock()
+	id, ok := m.mapTorrentToMedia[*event.TorrentID]
+	m.mu.Unlock()
+	if !ok {
+		logger.Warnf("Info about torrent '%s' not found in the cached", event.TorrentID)
+		return nil
+	}
+
+	info, err := m.cli.GetTorrentInfo(ctx, &rms_torrent.GetTorrentInfoRequest{Id: *event.TorrentID})
+	if err != nil {
+		logger.Errorf("Get torrent info failed: %s", err)
+		return nil
+	}
+
+	m.eventChan <- &eventAdd{
+		id: id,
+		torrents: []model.TorrentRecord{
+			{
+				ID:       *event.TorrentID,
+				Location: info.Location,
+				Title:    info.Title,
+				Size:     info.SizeMB,
+			},
+		},
+	}
+
+	return nil
 }

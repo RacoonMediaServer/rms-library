@@ -93,6 +93,9 @@ func main() {
 	if err != nil {
 		logger.Fatalf("Cannot initialize downloads manager: %s", err)
 	}
+	if err = downloadManager.Subscribe(service.Server()); err != nil {
+		logger.Warnf("Subscribe to notifications failed: %s", err)
+	}
 
 	lk := lock.NewLocker()
 	sched := schedule.New()
