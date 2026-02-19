@@ -3,10 +3,8 @@ package storage
 import (
 	"fmt"
 	"os"
-	"sync"
 
 	"github.com/RacoonMediaServer/rms-library/internal/config"
-	"github.com/RacoonMediaServer/rms-library/internal/model"
 )
 
 const mediaPerms = 0755
@@ -16,20 +14,13 @@ const maxFsCommands = 50
 
 // Manager is responsible for management content on a disk
 type Manager struct {
-	db   Database
-	cmd  chan func()
 	dirs config.Directories
-
-	mu    sync.Mutex
-	cache map[model.ID]*mediaInfo
 }
 
 // NewManager creates Manager and base directory layout
-func NewManager(db Database, dirs config.Directories) (*Manager, error) {
+func NewManager(dirs config.Directories) (*Manager, error) {
 	m := &Manager{
-		db:    db,
-		dirs:  dirs,
-		cache: map[model.ID]*mediaInfo{},
+		dirs: dirs,
 	}
 
 	_ = os.RemoveAll(dirs.Content)
@@ -43,12 +34,6 @@ func NewManager(db Database, dirs config.Directories) (*Manager, error) {
 	if err := os.MkdirAll(dirs.WatchList, mediaPerms); err != nil {
 		return nil, fmt.Errorf("create watchlist directory failed: %w", err)
 	}
-	m.cmd = make(chan func(), maxFsCommands)
-	go func() {
-		for cmd := range m.cmd {
-			cmd()
-		}
-	}()
 
 	return m, nil
 }

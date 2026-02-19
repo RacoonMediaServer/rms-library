@@ -23,9 +23,6 @@ type Configuration struct {
 
 	// Remote is settings to connect to the Remote Server
 	Remote Remote
-
-	// WaitTorrentReady means add data to directory only when torrent is downloaded
-	WaitTorrentReady bool `json:"wait-torrent-ready"`
 }
 
 type Directories struct {

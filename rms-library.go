@@ -83,13 +83,16 @@ func main() {
 	}
 
 	// создаем структуру директорий
-	dirManager, err := storage.NewManager(database, cfg.Directories)
+	dirManager, err := storage.NewManager(cfg.Directories)
 	if err != nil {
 		logger.Fatalf("Cannot initialize directory manager: %s", err)
 	}
 
 	// создаем менеджер закачек
-	downloadManager := downloads.NewManager(f.NewTorrent(false), f.NewTorrent(true), database, dirManager, cfg.WaitTorrentReady)
+	downloadManager, err := downloads.NewManager(f.NewTorrent(false), f.NewTorrent(true), database, dirManager)
+	if err != nil {
+		logger.Fatalf("Cannot initialize downloads manager: %s", err)
+	}
 
 	lk := lock.NewLocker()
 	sched := schedule.New()
@@ -112,12 +115,11 @@ func main() {
 	}
 
 	listsService := &lists.Service{
-		Database:         database,
-		Movies:           moviesService,
-		Scheduler:        sched,
-		Downloads:        downloadManager,
-		Locker:           lk,
-		DirectoryManager: dirManager,
+		Database:  database,
+		Movies:    moviesService,
+		Scheduler: sched,
+		Downloads: downloadManager,
+		Locker:    lk,
 	}
 
 	torrentsService := &torrents.Service{

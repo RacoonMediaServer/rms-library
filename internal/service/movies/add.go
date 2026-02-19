@@ -135,8 +135,6 @@ func (l MoviesService) searchAndDownload(log logger.Logger, ctx context.Context,
 		}
 	}
 
-	l.dir.CreateMovieLayout(mov)
-
 	l.notifyUser(log, ctx, mov, events.Notification_ContentFound, getSeasons(result))
 	return nil
 }

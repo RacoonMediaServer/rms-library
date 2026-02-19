@@ -1,8 +1,8 @@
 package storage
 
 import (
-	"context"
 	"fmt"
+	"io/fs"
 	"os"
 	"path"
 	"path/filepath"
@@ -11,100 +11,151 @@ import (
 
 	"github.com/RacoonMediaServer/rms-library/internal/analysis"
 	"github.com/RacoonMediaServer/rms-library/internal/model"
+	rms_library "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-library"
 	"go-micro.dev/v4/logger"
 )
 
-func (m *Manager) GetDownloadedSeasons(mov *model.Movie) map[uint]struct{} {
-	seasons := map[uint]struct{}{}
-	for _, t := range mov.Torrents {
-		contentPath := t.Location
-		err := filepath.Walk(contentPath,
-			func(path string, info os.FileInfo, err error) error {
-				if err != nil {
-					return err
-				}
-				if info.IsDir() {
-					return nil
-				}
+const rawFilesDirectory = "_Raw"
 
-				result := analysis.Analyze(path)
-				if result.Season != 0 {
-					seasons[result.Season] = struct{}{}
-				}
-				return nil
-			})
-		if err != nil {
-			logger.Warnf("Walk through %s failed: %s", contentPath, err)
-		}
-	}
-	return seasons
+type movieLayout struct {
+	root         string
+	l            logger.Logger
+	mi           *rms_library.MovieInfo
+	t            *model.TorrentRecord
+	mapMovieDirs []string
 }
 
-func getMovieDirectories(mov *model.Movie) (directories []string) {
-	title := escape(mov.Info.Title)
+// MoviesMountTorrent implements downloads.DirectoryManager.
+func (m *Manager) MoviesMountTorrent(mi *rms_library.MovieInfo, t *model.TorrentRecord) {
+	l := logger.DefaultLogger.Fields(map[string]interface{}{
+		"title":   mi.Title,
+		"tid":     t.ID,
+		"torrent": t.Title,
+	})
 
-	directories = append(directories, path.Join(getMovieCategoryDir(mov), title))
+	fi, err := os.Stat(t.Location)
+	if err != nil {
+		l.Logf(logger.ErrorLevel, "Location '%s' is empty or inaccessible", t.Location)
+		return
+	}
 
-	if mov.Info.Year != 0 {
-		directories = append(directories, path.Join(nameByYear, fmt.Sprintf("%d", mov.Info.Year), title))
+	ml := &movieLayout{
+		root:         m.dirs.Content,
+		l:            l,
+		mi:           mi,
+		t:            t,
+		mapMovieDirs: mapMovieDirectories(mi, t.Title),
+	}
+
+	if !fi.IsDir() {
+		ml.makeLinks(t.Location, fi.Name())
+		return
+	}
+
+	ml.mount()
+}
+
+// MoviesUmountTorrent implements downloads.DirectoryManager.
+func (m *Manager) MoviesUmountTorrent(mi *rms_library.MovieInfo, t *model.TorrentRecord) {
+	l := logger.DefaultLogger.Fields(map[string]interface{}{
+		"title":   mi.Title,
+		"tid":     t.ID,
+		"torrent": t.Title,
+	})
+	ml := &movieLayout{
+		root:         m.dirs.Content,
+		l:            l,
+		mi:           mi,
+		t:            t,
+		mapMovieDirs: mapMovieDirectories(mi, t.Title),
+	}
+	ml.umount()
+}
+
+func mapMovieDirectories(mi *rms_library.MovieInfo, torrentTitle string) (directories []string) {
+	title := escape(mi.Title)
+	torrentTitle = escape(torrentTitle)
+
+	directories = append(directories, path.Join(getMovieCategoryDir(mi), title, torrentTitle))
+
+	if mi.Year != 0 {
+		directories = append(directories, path.Join(nameByYear, fmt.Sprintf("%d", mi.Year), title, torrentTitle))
 	}
 
 	letter, _ := utf8.DecodeRuneInString(title)
 	letter = unicode.ToUpper(letter)
-	directories = append(directories, path.Join(nameByAlpha, string(letter), title))
+	directories = append(directories, path.Join(nameByAlpha, string(letter), title, torrentTitle))
 
-	for _, g := range mov.Info.Genres {
+	for _, g := range mi.Genres {
 		g = capitalize(g)
-		directories = append(directories, path.Join(nameByGenre, g, title))
+		directories = append(directories, path.Join(nameByGenre, g, title, torrentTitle))
 	}
 
 	return
 }
 
-// CreateMovieLayout creates pretty symbolic links to movie
-func (m *Manager) CreateMovieLayout(mov *model.Movie) {
-	m.cmd <- func() {
-		mi := m.addMovieInfoToCache(mov)
-		l := newMovieLayout(mi, mov.Torrents, m.dirs.Content)
-		l.make()
+func (ml *movieLayout) mount() {
+	originDir := ml.t.Location
+
+	err := filepath.Walk(originDir, func(path string, info fs.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return nil
+		}
+
+		relpath := ""
+		relpath, err = filepath.Rel(ml.t.Location, path)
+		if err != nil {
+			return err
+		}
+		mediaInfo := analysis.Analyze(relpath)
+
+		ml.makeFileLinks(path, relpath, mediaInfo)
+
+		return nil
+	})
+
+	if err != nil {
+		ml.l.Logf(logger.ErrorLevel, "Iterate directory '%s' failed: %s", originDir, err)
+		return
 	}
 }
 
-func (m *Manager) DeleteItemLayout(id model.ID) {
-	m.cmd <- func() {
-		dirs := []string{}
+func (ml *movieLayout) makeFileLinks(path, relpath string, result analysis.Result) {
+	if ml.mi.Type != rms_library.MovieType_TvSeries {
+		ml.makeLinks(path, relpath)
+		return
+	}
 
-		m.mu.Lock()
-		mi := m.cache[id]
-		if mi != nil {
-			delete(m.cache, id)
-			dirs = mi.directories
-		}
-		m.mu.Unlock()
+	ml.makeLinks(path, filepath.Join(rawFilesDirectory, relpath))
+	if result.Episode == 0 || result.Season == 0 {
+		return
+	}
 
-		for _, dir := range dirs {
-			dir = path.Join(m.dirs.Content, dir)
-			_ = os.RemoveAll(dir)
-		}
+	seasonDir := fmt.Sprintf("Сезон %d", result.Season)
+	fName := composeMovieFileName(ml.mi, path, &result)
+	ml.makeLinks(path, filepath.Join(seasonDir, fName))
+}
+
+func (ml *movieLayout) makeLink(origin, target string) {
+	_ = os.MkdirAll(path.Dir(target), mediaPerms)
+	if err := os.Symlink(origin, target); err != nil {
+		ml.l.Logf(logger.WarnLevel, "Create link '%s' -> '%s' failed: %s", target, origin, err)
 	}
 }
 
-func (m *Manager) UpdateItemLayout(id model.ID) {
-	m.cmd <- func() {
-		m.mu.Lock()
-		mi := m.cache[id]
-		m.mu.Unlock()
+func (ml *movieLayout) makeLinks(origin, target string) {
+	for _, dir := range ml.mapMovieDirs {
+		absTarget := filepath.Join(ml.root, dir, target)
+		ml.makeLink(origin, absTarget)
+	}
+}
 
-		if mi == nil {
-			return
-		}
-
-		item, err := m.db.GetListItem(context.Background(), id)
-		if err != nil || item == nil {
-			return
-		}
-
-		l := newMovieLayout(mi, item.Torrents, m.dirs.Content)
-		l.make()
+func (ml *movieLayout) umount() {
+	for _, dir := range ml.mapMovieDirs {
+		_ = os.RemoveAll(filepath.Join(ml.root, dir))
+		// TODO: remove empty directories
 	}
 }

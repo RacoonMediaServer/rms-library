@@ -4,13 +4,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
+
+	"slices"
 
 	"github.com/RacoonMediaServer/rms-library/internal/model"
-	"github.com/RacoonMediaServer/rms-media-discovery/pkg/media"
 	rms_library "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-library"
 	rms_torrent "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-torrent"
 	"go-micro.dev/v4/logger"
 )
+
+const eventsCapacity = 10000
 
 // Manager is responsible for downloading and management torrents
 type Manager struct {
@@ -18,22 +22,44 @@ type Manager struct {
 	onlineCli rms_torrent.RmsTorrentService
 	dm        DirectoryManager
 	db        Database
-}
+	eventChan chan interface{}
 
-type content struct {
-	contentType media.ContentType
-	id          string
-	seasons     map[uint]struct{}
+	mu      sync.Mutex
+	movInfo map[model.ID]*rms_library.MovieInfo
 }
 
 // NewManager creates a Manager instance
-func NewManager(cli rms_torrent.RmsTorrentService, onlineCli rms_torrent.RmsTorrentService, db Database, dm DirectoryManager, waitTorrentReady bool) *Manager {
-	return &Manager{
+func NewManager(cli rms_torrent.RmsTorrentService, onlineCli rms_torrent.RmsTorrentService, db Database, dm DirectoryManager) (*Manager, error) {
+	m := Manager{
 		cli:       cli,
 		onlineCli: onlineCli,
 		db:        db,
 		dm:        dm,
+		eventChan: make(chan interface{}, eventsCapacity),
+		movInfo:   map[model.ID]*rms_library.MovieInfo{},
 	}
+
+	if err := m.startLayoutCreation(); err != nil {
+		return nil, fmt.Errorf("start layout creation failed: %w", err)
+	}
+
+	go m.processEvents()
+
+	return &m, nil
+}
+
+func (m *Manager) startLayoutCreation() error {
+	// создаем директории для уже зарегистрированных медиа
+	movies, err := m.db.SearchMovies(context.Background(), nil)
+	if err != nil {
+		return fmt.Errorf("load movies failed: %s", err)
+	}
+
+	for _, movie := range movies {
+		m.eventChan <- &eventNew{movie: movie}
+	}
+
+	return nil
 }
 
 func (m *Manager) client(onlinePlayback bool) rms_torrent.RmsTorrentService {
@@ -73,32 +99,42 @@ func (m *Manager) Download(ctx context.Context, item *model.ListItem, torrent []
 		return fmt.Errorf("update movie content failed: %s", err)
 	}
 
-	m.dm.UpdateItemLayout(item.ID)
+	m.eventChan <- &eventAdd{
+		id:       item.ID,
+		torrents: []model.TorrentRecord{torrentRecord},
+	}
 
 	return nil
 }
 
-func (m *Manager) DropTorrents(ctx context.Context, torrents []model.TorrentRecord) {
+func (m *Manager) DropTorrents(ctx context.Context, id model.ID, torrents []model.TorrentRecord) {
 	for _, t := range torrents {
 		cli := m.client(t.Online)
 		if _, err := cli.RemoveTorrent(ctx, &rms_torrent.RemoveTorrentRequest{Id: t.ID}); err != nil {
 			logger.Warnf("Remove torrent failed: %s", err)
 		}
 	}
+
+	if len(torrents) != 0 {
+		m.eventChan <- &eventRemove{
+			id:       id,
+			torrents: torrents,
+		}
+	}
 }
 
 func (m *Manager) RemoveTorrent(ctx context.Context, item *model.ListItem, torrentId string) error {
-	var target *model.TorrentRecord
+	var target model.TorrentRecord
 	var updatedTorrents []model.TorrentRecord
 	for i := range item.Torrents {
 		if item.Torrents[i].ID == torrentId {
-			target = &item.Torrents[i]
-			updatedTorrents = append(item.Torrents[:i], item.Torrents[i+1:]...)
+			target = item.Torrents[i]
+			updatedTorrents = slices.Delete(item.Torrents, i, i+1)
 			break
 		}
 	}
 
-	if target == nil {
+	if target.ID == "" {
 		return errors.New("torrent not found")
 	}
 
@@ -112,7 +148,14 @@ func (m *Manager) RemoveTorrent(ctx context.Context, item *model.ListItem, torre
 	}
 
 	item.Torrents = updatedTorrents
-	m.dm.UpdateItemLayout(item.ID)
+
+	m.eventChan <- &eventRemove{
+		id:       item.ID,
+		torrents: []model.TorrentRecord{target},
+	}
+
+	logger.Infof("Torrent '%s' [ %s ] removed", target.Title, target.ID)
+
 	return nil
 }
 
@@ -133,6 +176,7 @@ func (m *Manager) getTorrentsMap(ctx context.Context, online bool) (map[string]*
 }
 
 func (m *Manager) DropMissedTorrents(ctx context.Context, item *model.ListItem) error {
+	var removed []model.TorrentRecord
 	offlineTorrents, err := m.getTorrentsMap(ctx, false)
 	if err != nil {
 		return err
@@ -153,6 +197,7 @@ func (m *Manager) DropMissedTorrents(ctx context.Context, item *model.ListItem) 
 		_, found := torrents[t.ID]
 		if !found {
 			changed = true
+			removed = append(removed, t)
 		} else {
 			resultTorrents = append(resultTorrents, t)
 		}
@@ -167,11 +212,17 @@ func (m *Manager) DropMissedTorrents(ctx context.Context, item *model.ListItem) 
 	}
 
 	item.Torrents = resultTorrents
-	m.dm.UpdateItemLayout(item.ID)
+	if len(removed) != 0 {
+		m.eventChan <- &eventRemove{
+			id:       item.ID,
+			torrents: removed,
+		}
+	}
 	return nil
 }
 
 func (m *Manager) UpdateTorrentInfo(ctx context.Context, item *model.ListItem) error {
+	var updated []model.TorrentRecord
 	changed := false
 	for i := range item.Torrents {
 		t := &item.Torrents[i]
@@ -183,6 +234,7 @@ func (m *Manager) UpdateTorrentInfo(ctx context.Context, item *model.ListItem) e
 		if info.Location != t.Location {
 			t.Location = info.Location
 			changed = true
+			updated = append(updated, *t)
 		}
 		if !t.Online && info.SizeMB != t.Size {
 			t.Size = info.SizeMB
@@ -196,7 +248,12 @@ func (m *Manager) UpdateTorrentInfo(ctx context.Context, item *model.ListItem) e
 
 	err := m.db.UpdateContent(ctx, item.ID, item.Torrents)
 	if err == nil {
-		m.dm.UpdateItemLayout(item.ID)
+		if len(updated) != 0 {
+			m.eventChan <- &eventUpdate{
+				id:       item.ID,
+				torrents: updated,
+			}
+		}
 	}
 	return err
 }

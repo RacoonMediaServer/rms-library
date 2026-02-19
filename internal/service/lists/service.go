@@ -13,12 +13,11 @@ import (
 )
 
 type Service struct {
-	Database         Database
-	Movies           Movies
-	Scheduler        Scheduler
-	Downloads        DownloadManager
-	Locker           lock.Locker
-	DirectoryManager DirectoryManager
+	Database  Database
+	Movies    Movies
+	Scheduler Scheduler
+	Downloads DownloadManager
+	Locker    lock.Locker
 }
 
 const lockTimeout = 20 * time.Second
@@ -72,8 +71,7 @@ func (s *Service) Delete(ctx context.Context, req *rms_library.ListsDeleteReques
 	}
 
 	s.Scheduler.Cancel(req.Id)
-	s.DirectoryManager.DeleteItemLayout(id)
-	s.Downloads.DropTorrents(ctx, item.Torrents)
+	s.Downloads.DropTorrents(ctx, id, item.Torrents)
 
 	return nil
 }

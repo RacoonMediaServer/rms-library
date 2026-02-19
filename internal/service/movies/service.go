@@ -84,9 +84,6 @@ func (l MoviesService) Initialize() error {
 
 	for _, mov := range movies {
 		logger.Debugf("Movie found: %s", mov.Title)
-
-		l.dir.CreateMovieLayout(mov)
-
 		l.startWatchers(mov)
 	}
 

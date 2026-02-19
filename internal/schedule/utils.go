@@ -13,7 +13,7 @@ func GetRetryWrapper(l logger.Logger, fn func(logger.Logger, context.Context) er
 			l.Logf(logger.ErrorLevel, "Operation failed: %s", err)
 			return Result{Result: OpResultRetry}
 		}
-		l.Log(logger.InfoLevel, "Complete")
+		l.Log(logger.DebugLevel, "Complete")
 		return Result{Result: OpResultDone}
 	}
 }
@@ -24,7 +24,7 @@ func GetPeriodicWrapper(l logger.Logger, period time.Duration, fn func(logger.Lo
 			l.Logf(logger.ErrorLevel, "Operation failed: %s", err)
 			return Result{Result: OpResultRetry}
 		}
-		l.Log(logger.InfoLevel, "Complete")
+		l.Log(logger.DebugLevel, "Complete")
 		return Result{Result: OpResultRetryAfter, After: period}
 	}
 }
