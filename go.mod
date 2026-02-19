@@ -4,7 +4,7 @@ go 1.25.0
 
 require (
 	github.com/RacoonMediaServer/rms-media-discovery v1.8.0
-	github.com/RacoonMediaServer/rms-packages v1.17.1
+	github.com/RacoonMediaServer/rms-packages v1.17.2
 	github.com/antzucaro/matchr v0.0.0-20221106193745-7bed6ef61ef9
 	github.com/apex/log v1.9.0
 	github.com/go-micro/plugins/v4/registry/etcd v1.2.0

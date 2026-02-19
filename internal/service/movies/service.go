@@ -2,6 +2,7 @@ package movies
 
 import (
 	"context"
+	"time"
 
 	"github.com/RacoonMediaServer/rms-library/v3/internal/config"
 	"github.com/RacoonMediaServer/rms-library/v3/internal/lock"
@@ -9,9 +10,11 @@ import (
 	"github.com/RacoonMediaServer/rms-media-discovery/pkg/client/client"
 	rms_library "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-library"
 	"github.com/RacoonMediaServer/rms-packages/pkg/service/servicemgr"
+	"github.com/apex/log"
 	"github.com/go-openapi/runtime"
 	httptransport "github.com/go-openapi/runtime/client"
 	"github.com/go-openapi/strfmt"
+	"github.com/google/uuid"
 	"go-micro.dev/v4"
 	"go-micro.dev/v4/logger"
 )
@@ -29,6 +32,56 @@ type MoviesService struct {
 	sched Scheduler
 	lk    lock.Locker
 	pub   micro.Event
+}
+
+// AddClip implements rms_library.MoviesHandler.
+func (l *MoviesService) AddClip(ctx context.Context, req *rms_library.MoviesAddClipRequest, resp *rms_library.MoviesAddClipResponse) error {
+	id := model.MakeID("clip_"+uuid.New().String(), rms_library.ContentType_TypeMovies)
+	title := id.Strip()
+	if req.Title != nil {
+		title = *req.Title
+	}
+
+	mov := model.Movie{
+		ListItem: model.ListItem{
+			ID:          id,
+			Title:       title,
+			CreatedAt:   time.Now(),
+			List:        req.List,
+			ContentType: rms_library.ContentType_TypeMovies,
+			Category:    model.GetVideoCategory(rms_library.MovieType_Clip),
+		},
+		Info: rms_library.MovieInfo{
+			Type:  rms_library.MovieType_Clip,
+			Title: title,
+		},
+	}
+
+	path, err := l.dir.StoreArchiveTorrent(title, req.Torrent)
+	if err == nil {
+		mov.ArchivedTorrents = []model.TorrentSearchResult{
+			{
+				Path: path,
+			},
+		}
+	} else {
+		log.Warnf("Store torrent file to archive failed: %s", err)
+	}
+
+	if err := l.db.AddMovie(ctx, &mov); err != nil {
+		logger.Errorf("Add clip to database failed: %s", err)
+		return err
+	}
+
+	if err := l.dm.Download(ctx, &mov.ListItem, req.Torrent); err != nil {
+		logger.Errorf("Download content for '%s' failed", title)
+		return nil
+	}
+
+	l.startWatchers(&mov)
+
+	resp.Id = id.String()
+	return nil
 }
 
 // Get implements rms_library.MoviesHandler.

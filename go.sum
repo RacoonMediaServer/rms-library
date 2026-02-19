@@ -52,8 +52,8 @@ github.com/PuerkitoBio/purell v1.1.1/go.mod h1:c11w/QuzBsJSee3cPx9rAFu61PvFxuPbt
 github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578/go.mod h1:uGdkoq3SwY9Y+13GIhn11/XLaGBb4BfwItxLd5jeuXE=
 github.com/RacoonMediaServer/rms-media-discovery v1.8.0 h1:TLNPb9RegNEdmAtgRa5bm4BLVC9OgXXsD7dFj/suVF8=
 github.com/RacoonMediaServer/rms-media-discovery v1.8.0/go.mod h1:R4+e/cad+Wt5OLglSey6ESUolwhBYU4Xx4uAgxNQODM=
-github.com/RacoonMediaServer/rms-packages v1.17.1 h1:yp6whKTJrbYQA4uZOl95g3O0XtTGSg+lfMGodrw6rj8=
-github.com/RacoonMediaServer/rms-packages v1.17.1/go.mod h1:RiGcnXZXAcnk2LCVTGI31gqfYPBUoiSxjX7L7024aB0=
+github.com/RacoonMediaServer/rms-packages v1.17.2 h1:+6mv2Lsx3OIs17ZcgAVTjrJXN03ZLxNAMVNGJ9/vKUw=
+github.com/RacoonMediaServer/rms-packages v1.17.2/go.mod h1:RiGcnXZXAcnk2LCVTGI31gqfYPBUoiSxjX7L7024aB0=
 github.com/Shopify/sarama v1.19.0/go.mod h1:FVkBWblsNy7DGZRfXLU0O9RCGt5g3g3yEuWXgklEdEo=
 github.com/Shopify/toxiproxy v2.1.4+incompatible/go.mod h1:OXgGpZ6Cli1/URJOF1DMxUHB2q5Ap20/P/eIdh4G0pI=
 github.com/acomagu/bufpipe v1.0.3 h1:fxAGrHZTgQ9w5QqVItgzwj235/uYZYgbXitB+dLupOk=

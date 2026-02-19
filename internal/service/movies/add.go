@@ -65,6 +65,18 @@ func (l MoviesService) Add(ctx context.Context, id model.ID, list rms_library.Li
 }
 
 func (l MoviesService) downloadContent(log logger.Logger, ctx context.Context, mov *model.Movie) error {
+	if mov.Info.Type == rms_library.MovieType_Clip {
+		if mov.List == rms_library.List_Archive {
+			return nil
+		}
+
+		if err := l.restoreFromArchive(log, ctx, mov); err != nil {
+			return fmt.Errorf("restore from archive failed: %w", err)
+		}
+
+		return nil
+	}
+
 	if mov.List == rms_library.List_Archive {
 		if err := l.searchAndSave(log, ctx, mov); err != nil {
 			return fmt.Errorf("search and save content failed: %w", err)
@@ -136,6 +148,27 @@ func (l MoviesService) searchAndDownload(log logger.Logger, ctx context.Context,
 	}
 
 	l.notifyUser(log, ctx, mov, events.Notification_ContentFound, getSeasons(result))
+	return nil
+}
+
+func (l MoviesService) restoreFromArchive(log logger.Logger, ctx context.Context, mov *model.Movie) error {
+	// TODO: it works only for clips
+
+	if len(mov.ArchivedTorrents) == 0 {
+		return errors.New("no torrents found in the archive")
+	}
+
+	for _, t := range mov.ArchivedTorrents {
+		content, err := l.dir.LoadArchiveTorrent(t.Path)
+		if err != nil {
+			log.Logf(logger.ErrorLevel, "Read torrent file failed: %s", err)
+			continue
+		}
+		if err := l.dm.Download(ctx, &mov.ListItem, content); err != nil {
+			log.Logf(logger.ErrorLevel, "Download archived torrent failed: %s", err)
+		}
+	}
+
 	return nil
 }
 
