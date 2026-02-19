@@ -1,7 +1,6 @@
 {
   "database": "mongodb://localhost:27017/library",
   "device": "",
-  "wait-torrent-ready": true,
   "remote": {
     "scheme": "https",
     "host": "api.racoondev.top",
@@ -9,8 +8,7 @@
     "path": "/media"
   },
   "directories": {
-    "downloads": "/media/library/torrents",
     "content": "/media/library/movies",
-    "watch-list": "/media/library/watchlist"
+    "archive": "/media/library/archive"
   }
 }

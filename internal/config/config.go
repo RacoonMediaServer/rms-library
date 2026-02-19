@@ -26,14 +26,11 @@ type Configuration struct {
 }
 
 type Directories struct {
-	// Downloads mean path to torrents content
-	Downloads string
-
 	// Content means path to organized media
 	Content string
 
-	// Path to directory for store watch-list torrent files
-	WatchList string `json:"watch-list"`
+	// Path to directory for store archive torrent files
+	Archive string
 }
 
 var config Configuration

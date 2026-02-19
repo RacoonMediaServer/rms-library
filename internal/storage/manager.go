@@ -25,14 +25,11 @@ func NewManager(dirs config.Directories) (*Manager, error) {
 
 	_ = os.RemoveAll(dirs.Content)
 
-	if err := os.MkdirAll(dirs.Downloads, downloadPerms); err != nil {
-		return nil, fmt.Errorf("create downloads directory failed: %w", err)
-	}
 	if err := os.MkdirAll(dirs.Content, mediaPerms); err != nil {
 		return nil, fmt.Errorf("create content directory failed: %w", err)
 	}
-	if err := os.MkdirAll(dirs.WatchList, mediaPerms); err != nil {
-		return nil, fmt.Errorf("create watchlist directory failed: %w", err)
+	if err := os.MkdirAll(dirs.Archive, mediaPerms); err != nil {
+		return nil, fmt.Errorf("create archive directory failed: %w", err)
 	}
 
 	return m, nil

@@ -11,13 +11,13 @@ func (m *Manager) StoreArchiveTorrent(itemTitle string, torrent []byte) (id stri
 	itemTitle = escape(itemTitle)
 	fileName := uuid.NewString() + ".torrent"
 	id = filepath.Join(itemTitle, fileName)
-	err = os.MkdirAll(filepath.Join(m.dirs.WatchList, itemTitle), mediaPerms)
+	err = os.MkdirAll(filepath.Join(m.dirs.Archive, itemTitle), mediaPerms)
 	if err == nil {
-		err = os.WriteFile(filepath.Join(m.dirs.WatchList, id), torrent, mediaPerms)
+		err = os.WriteFile(filepath.Join(m.dirs.Archive, id), torrent, mediaPerms)
 	}
 	return
 }
 
 func (m *Manager) LoadArchiveTorrent(contentPath string) ([]byte, error) {
-	return os.ReadFile(filepath.Join(m.dirs.WatchList, contentPath))
+	return os.ReadFile(filepath.Join(m.dirs.Archive, contentPath))
 }

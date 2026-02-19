@@ -19,3 +19,5 @@
 
 # VSCode projects
 .vscode
+
+configs/rms-library.json.debug
